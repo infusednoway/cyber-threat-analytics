@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}MITRE ATT&CK{% endblock %}
+{% block page_title %}MITRE ATT&CK Framework{% endblock %}
+{% block head %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>{% endblock %}
+{% block content %}
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card p-3">
+      <div class="stat-value" style="color:var(--accent)" id="mitreTotal">—</div>
+      <div class="stat-label">Техник ATT&CK загружено</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card p-3">
+      <div class="stat-value" style="color:var(--purple)" id="mitreSub">—</div>
+      <div class="stat-label">Подтехник</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card p-3">
+      <div class="stat-value" style="color:var(--ok)" id="mitreTactics">—</div>
+      <div class="stat-label">Тактик</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-xl-5">
+    <div class="card h-100">
+      <div class="card-header">Распределение техник по тактикам</div>
+      <div class="card-body" style="height:300px;position:relative;">
+        <canvas id="tacticsChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-7">
+    <div class="card h-100">
+      <div class="card-header">Поиск по технике или описанию</div>
+      <div class="card-body">
+        <div class="d-flex gap-2 mb-3">
+          <input type="text" id="searchInput" class="form-control" placeholder="Например: phishing, lateral movement, T1059..."/>
+          <button class="btn btn-primary" onclick="doSearch()">Найти</button>
+        </div>
+        <div id="searchResults" style="max-height:220px;overflow-y:auto;">
+          <p class="text-muted small">Введите запрос для поиска техник ATT&CK</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span>Техники ATT&CK</span>
+    <select id="tacticFilter" class="form-select form-select-sm" style="width:220px;" onchange="filterByTactic()">
+      <option value="">Все тактики</option>
+    </select>
+  </div>
+  <div class="card-body p-0" style="max-height:50vh;overflow-y:auto;">
+    <table class="table table-dark table-hover mb-0">
+      <thead><tr><th>ID</th><th>Название</th><th>Тактика</th><th>Описание</th></tr></thead>
+      <tbody id="techTable">
+        <tr><td colspan="4" class="text-center text-muted py-3">Загрузка...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let allTactics = [];
+
+async function loadStats() {
+  const s = await fetch('/api/mitre/stats').then(r => r.json());
+  document.getElementById('mitreTotal').textContent   = s.total_techniques   ?? '—';
+  document.getElementById('mitreSub').textContent     = s.total_subtechniques ?? '—';
+  document.getElementById('mitreTactics').textContent = s.total_tactics       ?? '—';
+}
+
+async function loadTactics() {
+  const data = await fetch('/api/mitre/tactics').then(r => r.json());
+  allTactics = data;
+
+  const sel = document.getElementById('tacticFilter');
+  const seen = new Set();
+  data.forEach(t => {
+    if (!seen.has(t.tactic)) {
+      seen.add(t.tactic);
+      const opt = document.createElement('option');
+      opt.value = t.tactic; opt.textContent = t.tactic;
+      sel.appendChild(opt);
+    }
+  });
+
+  const unique = [...seen].map(tac => ({
+    tactic: tac,
+    count: data.filter(d => d.tactic === tac).reduce((a, b) => a + b.count, 0)
+  })).sort((a,b) => b.count - a.count).slice(0, 12);
+
+  new Chart(document.getElementById('tacticsChart'), {
+    type: 'bar',
+    data: {
+      labels: unique.map(t => t.tactic.replace(/-/g,' ')),
+      datasets: [{ label: 'Техник', data: unique.map(t => t.count), backgroundColor: '#58a6ff' }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { ticks: { color:'#8b949e' }, grid: { color:'#21262d' } },
+        y: { ticks: { color:'#c9d1d9', font:{ size:10 } }, grid: { color:'#21262d' } }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+async function loadTechniques(tactic = '') {
+  const url = tactic ? `/api/mitre/techniques?tactic=${encodeURIComponent(tactic)}&limit=200`
+                     : '/api/mitre/techniques?limit=200';
+  const data = await fetch(url).then(r => r.json());
+  renderTechTable(data);
+}
+
+function renderTechTable(data) {
+  const tbody = document.getElementById('techTable');
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">Нет данных. Запустите <code>python main.py collect</code></td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(t => `
+    <tr>
+      <td><a href="${t.url}" target="_blank" class="text-nowrap">${t.id}</a></td>
+      <td class="fw-semibold">${t.name}</td>
+      <td><span style="font-size:.7rem;background:#21262d;padding:.2em .4em;border-radius:4px;">${t.tactic||'—'}</span></td>
+      <td class="text-muted" style="font-size:.8rem;">${(t.description||'').slice(0,120)}${t.description&&t.description.length>120?'...':''}</td>
+    </tr>`).join('');
+}
+
+async function doSearch() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) return;
+  const data = await fetch(`/api/mitre/search?q=${encodeURIComponent(q)}`).then(r => r.json());
+  const div  = document.getElementById('searchResults');
+  if (!data.length) { div.innerHTML = '<p class="text-muted small">Ничего не найдено</p>'; return; }
+  div.innerHTML = data.map(t => `
+    <div class="mb-2 p-2 rounded" style="background:#21262d;">
+      <a href="${t.url}" target="_blank" class="fw-semibold">${t.id} — ${t.name}</a>
+      <div style="font-size:.75rem;color:#8b949e;">${(t.description||'').slice(0,100)}...</div>
+    </div>`).join('');
+}
+
+function filterByTactic() {
+  const tactic = document.getElementById('tacticFilter').value;
+  loadTechniques(tactic);
+}
+
+document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+Promise.all([loadStats(), loadTactics(), loadTechniques()]);
+</script>
+{% endblock %}
