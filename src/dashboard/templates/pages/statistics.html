@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Статистика{% endblock %}
+{% block page_title %}Расширенная статистика{% endblock %}
+{% block head %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>{% endblock %}
+{% block content %}
+
+<div class="row g-3 mb-4">
+  {% set cards = [
+    ('Всего CVE',       summary.total_cves,     'var(--accent)'),
+    ('Эксплойтов',      summary.total_exploits, 'var(--purple)'),
+    ('Новостей',        summary.total_news,      'var(--ok)'),
+    ('CVE в день (avg)',summary.daily_avg,       'var(--warn)'),
+  ] %}
+  {% for label, val, color in cards %}
+  <div class="col-6 col-md-3">
+    <div class="card p-3" style="border-left:4px solid {{ color }}">
+      <div class="stat-value" style="color:{{ color }}">{{ val }}</div>
+      <div class="stat-label">{{ label }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-xl-4">
+    <div class="card h-100">
+      <div class="card-header">Топ-10 CWE</div>
+      <div class="card-body" style="height:280px;position:relative;">
+        <canvas id="cweChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-4">
+    <div class="card h-100">
+      <div class="card-header">Распределение CVSS Score</div>
+      <div class="card-body" style="height:280px;position:relative;">
+        <canvas id="cvssChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-4">
+    <div class="card h-100">
+      <div class="card-header">Типы эксплойтов</div>
+      <div class="card-body" style="height:280px;position:relative;">
+        <canvas id="expTypeChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-12 col-xl-6">
+    <div class="card">
+      <div class="card-header">Платформы эксплойтов</div>
+      <div class="card-body p-0">
+        <table class="table table-dark table-hover mb-0">
+          <thead><tr><th>Платформа</th><th>Эксплойтов</th><th>Доля</th></tr></thead>
+          <tbody>
+          {% set total_exp = platforms|sum(attribute='count') or 1 %}
+          {% for p in platforms %}
+          <tr>
+            <td>{{ p.platform }}</td>
+            <td>{{ p.count }}</td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div style="height:6px;border-radius:3px;background:var(--accent);width:{{ [p.count/total_exp*200,200]|min }}px;"></div>
+                {{ "%.1f"|format(p.count/total_exp*100) }}%
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-6">
+    <div class="card">
+      <div class="card-header">Источники новостей</div>
+      <div class="card-body p-0">
+        <table class="table table-dark table-hover mb-0">
+          <thead><tr><th>Источник</th><th>Новостей</th></tr></thead>
+          <tbody>
+          {% for s in sources %}
+          <tr><td>{{ s.source }}</td><td>{{ s.count }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const cweData  = {{ top_cwe  | tojson }};
+const cvssData = {{ cvss_dist | tojson }};
+const expTypes = {{ exp_types | tojson }};
+
+if (cweData.length) {
+  new Chart(document.getElementById('cweChart'), {
+    type: 'bar',
+    data: { labels: cweData.map(x=>x.cwe), datasets: [{ label:'CVE', data: cweData.map(x=>x.count), backgroundColor:'#f85149' }] },
+    options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      scales: { x:{ticks:{color:'#8b949e'},grid:{color:'#21262d'}}, y:{ticks:{color:'#c9d1d9',font:{size:10}},grid:{color:'#21262d'}} },
+      plugins: { legend:{display:false} } }
+  });
+}
+
+new Chart(document.getElementById('cvssChart'), {
+  type: 'doughnut',
+  data: { labels: Object.keys(cvssData), datasets: [{ data: Object.values(cvssData),
+    backgroundColor: ['#3fb950','#e3b341','#f0883e','#f85149'], borderWidth:2, borderColor:'#161b22' }] },
+  options: { responsive:true, maintainAspectRatio:false,
+    plugins: { legend: { position:'bottom', labels:{color:'#c9d1d9',boxWidth:12,padding:8} } } }
+});
+
+if (expTypes.length) {
+  new Chart(document.getElementById('expTypeChart'), {
+    type: 'pie',
+    data: { labels: expTypes.map(x=>x.type), datasets: [{ data: expTypes.map(x=>x.count),
+      backgroundColor: ['#58a6ff','#f85149','#e3b341','#3fb950','#d2a8ff','#f0883e','#79c0ff'],
+      borderWidth:2, borderColor:'#161b22' }] },
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins: { legend: { position:'bottom', labels:{color:'#c9d1d9',boxWidth:12,padding:6,font:{size:11}} } } }
+  });
+}
+</script>
+{% endblock %}
