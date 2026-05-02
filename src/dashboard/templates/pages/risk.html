@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Риск-скор CVE{% endblock %}
+{% block page_title %}Риск-скор CVE{% endblock %}
+{% block head %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>{% endblock %}
+{% block content %}
+
+<div class="row g-3 mb-4">
+  {% set dist_items = [
+    ('CRITICAL', distribution.CRITICAL or 0, 'var(--danger)'),
+    ('HIGH',     distribution.HIGH     or 0, 'var(--warn)'),
+    ('MEDIUM',   distribution.MEDIUM   or 0, 'var(--ok)'),
+    ('LOW',      distribution.LOW      or 0, 'var(--accent)'),
+  ] %}
+  {% for label, val, color in dist_items %}
+  <div class="col-6 col-md-3">
+    <div class="card p-3" style="border-left:4px solid {{ color }}">
+      <div class="stat-value" style="color:{{ color }}">{{ val }}</div>
+      <div class="stat-label">{{ label }} риск</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-xl-5">
+    <div class="card h-100">
+      <div class="card-header">Распределение риск-уровней</div>
+      <div class="card-body" style="height:260px;position:relative;">
+        <canvas id="riskDistChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-7">
+    <div class="card h-100">
+      <div class="card-header">Средний вклад компонент</div>
+      <div class="card-body" style="height:260px;position:relative;">
+        <canvas id="componentChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span>Топ-20 CVE по риск-скору</span>
+    <span class="text-muted" style="font-size:.75rem;">макс. балл: 100</span>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-dark table-hover mb-0">
+      <thead>
+        <tr>
+          <th>CVE ID</th>
+          <th>Риск-скор</th>
+          <th>Уровень</th>
+          <th>CVSS</th>
+          <th>Severity</th>
+          <th>Типы угроз</th>
+          <th>Опубликован</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in top_cves %}
+      <tr>
+        <td><a href="/cves/{{ r.cve_id }}">{{ r.cve_id }}</a></td>
+        <td>
+          <div class="d-flex align-items-center gap-2">
+            <div style="height:6px;border-radius:3px;width:{{ r.risk_score * 1.5 | int }}px;
+              background:{% if r.risk_score >= 75 %}var(--danger)
+                {% elif r.risk_score >= 55 %}var(--warn)
+                {% elif r.risk_score >= 35 %}var(--ok)
+                {% else %}var(--accent){% endif %}"></div>
+            <strong>{{ r.risk_score }}</strong>
+          </div>
+        </td>
+        <td><span class="badge badge-{{ r.risk_label }}">{{ r.risk_label }}</span></td>
+        <td>{{ r.cvss_score or '—' }}</td>
+        <td><span class="badge badge-{{ r.severity }}">{{ r.severity }}</span></td>
+        <td style="font-size:.75rem;color:var(--muted);">
+          {{ r.threat_types | join(', ') | truncate(40) }}
+        </td>
+        <td style="font-size:.75rem;">{{ (r.published or '')[:10] }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="text-center text-muted py-3">
+        Нет данных. Запустите <code>python main.py collect</code>
+      </td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const dist = {{ distribution | tojson }};
+const avgs = {{ component_avgs | tojson }};
+
+new Chart(document.getElementById('riskDistChart'), {
+  type: 'doughnut',
+  data: {
+    labels: Object.keys(dist),
+    datasets: [{
+      data: Object.values(dist),
+      backgroundColor: ['#f85149','#e3b341','#3fb950','#58a6ff'],
+      borderWidth: 2, borderColor: '#161b22'
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position:'bottom', labels:{color:'#c9d1d9',boxWidth:12,padding:8} } }
+  }
+});
+
+new Chart(document.getElementById('componentChart'), {
+  type: 'bar',
+  data: {
+    labels: Object.keys(avgs).map(k => k.replace(/_/g,' ')),
+    datasets: [{
+      label: 'Avg pts',
+      data: Object.values(avgs),
+      backgroundColor: ['#58a6ff','#f85149','#e3b341','#3fb950','#d2a8ff']
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      x: { ticks:{color:'#8b949e'}, grid:{color:'#21262d'} },
+      y: { ticks:{color:'#8b949e'}, grid:{color:'#21262d'} }
+    },
+    plugins: { legend:{display:false} }
+  }
+});
+</script>
+{% endblock %}

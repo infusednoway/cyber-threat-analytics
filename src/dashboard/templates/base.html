@@ -96,6 +96,16 @@
       <i class="bi bi-bookmark-star"></i> Watchlist</a>
 
     <div class="nav-section">Аналитика</div>
+    <a href="/statistics" class="nav-link {% if '/statistics' in request.path %}active{% endif %}">
+      <i class="bi bi-bar-chart"></i> Статистика</a>
+    <a href="/risk" class="nav-link {% if request.path == '/risk' %}active{% endif %}">
+      <i class="bi bi-shield-fill-exclamation"></i> Риск-скор</a>
+    <a href="/exposure" class="nav-link {% if '/exposure' in request.path %}active{% endif %}">
+      <i class="bi bi-globe2"></i> Экспозиция</a>
+    <a href="/anomalies" class="nav-link {% if '/anomalies' in request.path %}active{% endif %}">
+      <i class="bi bi-exclamation-triangle"></i> Аномалии</a>
+    <a href="/mitre" class="nav-link {% if '/mitre' in request.path %}active{% endif %}">
+      <i class="bi bi-diagram-3"></i> MITRE ATT&CK</a>
     <a href="/reports" class="nav-link {% if '/reports' in request.path %}active{% endif %}">
       <i class="bi bi-file-earmark-bar-graph"></i> Отчёты</a>
     <a href="/models" class="nav-link {% if '/models' in request.path %}active{% endif %}">

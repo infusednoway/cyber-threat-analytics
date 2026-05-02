@@ -235,4 +235,64 @@ def profile():
 @role_required(ROLE_ADMIN)
 def settings_page():
     user = get_current_user()
-    return render_template("pages/settings.html", user=user)
+    from src.utils.scheduler import get_scheduler
+    scheduler_status = get_scheduler().get_status()
+    return render_template("pages/settings.html", user=user, scheduler_status=scheduler_status)
+
+
+@main_bp.route("/anomalies")
+@login_required
+def anomalies_page():
+    user = get_current_user()
+    return render_template("pages/anomalies.html", user=user)
+
+
+@main_bp.route("/risk")
+@login_required
+def risk_page():
+    user = get_current_user()
+    from src.models.risk_scorer import get_top_risk_cves, get_risk_distribution, get_component_averages
+    top   = get_top_risk_cves(n=20, limit=500)
+    dist  = get_risk_distribution(500)
+    avgs  = get_component_averages(500)
+    return render_template("pages/risk.html", user=user,
+                           top_cves=top, distribution=dist, component_avgs=avgs)
+
+
+@main_bp.route("/exposure")
+@login_required
+def exposure_page():
+    user = get_current_user()
+    from src.models.nlp_analyzer import get_product_exposure, get_threat_type_distribution
+    products  = get_product_exposure(1000)
+    threat_dist = get_threat_type_distribution(1000)
+    return render_template("pages/exposure.html", user=user,
+                           products=products, threat_dist=threat_dist)
+
+
+@main_bp.route("/mitre")
+@login_required
+def mitre_page():
+    user = get_current_user()
+    from src.collectors.mitre_collector import get_mitre_stats
+    stats = get_mitre_stats()
+    return render_template("pages/mitre.html", user=user, stats=stats)
+
+
+@main_bp.route("/statistics")
+@login_required
+def statistics_page():
+    from src.utils.statistics import (
+        get_top_cwe, get_cvss_distribution, get_exploit_type_stats,
+        get_exploit_platform_stats, get_news_source_stats, get_summary_stats,
+    )
+    user     = get_current_user()
+    summary  = get_summary_stats()
+    top_cwe  = get_top_cwe(10)
+    cvss_dist = get_cvss_distribution()
+    exp_types = get_exploit_type_stats()
+    platforms = get_exploit_platform_stats()
+    sources   = get_news_source_stats()
+    return render_template("pages/statistics.html", user=user,
+                           summary=summary, top_cwe=top_cwe, cvss_dist=cvss_dist,
+                           exp_types=exp_types, platforms=platforms, sources=sources)

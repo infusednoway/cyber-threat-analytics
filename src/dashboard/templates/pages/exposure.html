@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Экспозиция продуктов{% endblock %}
+{% block page_title %}Экспозиция продуктов и типы угроз{% endblock %}
+{% block head %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>{% endblock %}
+{% block content %}
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-xl-6">
+    <div class="card h-100">
+      <div class="card-header">Типы угроз (по CVE-описаниям)</div>
+      <div class="card-body" style="height:300px;position:relative;">
+        <canvas id="threatChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-6">
+    <div class="card h-100">
+      <div class="card-header">Топ уязвимых продуктов</div>
+      <div class="card-body" style="height:300px;position:relative;">
+        <canvas id="productChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-12 col-xl-7">
+    <div class="card">
+      <div class="card-header">Продукты по количеству CVE</div>
+      <div class="card-body p-0">
+        <table class="table table-dark table-hover mb-0">
+          <thead>
+            <tr><th>Продукт</th><th>CVE</th><th>CRITICAL</th><th>HIGH</th><th>Риск</th></tr>
+          </thead>
+          <tbody>
+          {% for p in products %}
+          <tr>
+            <td class="fw-semibold">{{ p.product }}</td>
+            <td>{{ p.total }}</td>
+            <td>
+              {% if p.critical > 0 %}
+              <span class="badge badge-CRITICAL">{{ p.critical }}</span>
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              {% if p.high > 0 %}
+              <span class="badge badge-HIGH">{{ p.high }}</span>
+              {% else %}—{% endif %}
+            </td>
+            <td><span class="badge badge-{{ p.risk }}">{{ p.risk }}</span></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="text-center text-muted py-3">
+            Нет данных. Запустите <code>python main.py collect</code>
+          </td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-5">
+    <div class="card">
+      <div class="card-header">Распределение типов угроз</div>
+      <div class="card-body p-0">
+        <table class="table table-dark table-hover mb-0">
+          <thead><tr><th>Тип угрозы</th><th>CVE</th><th>%</th></tr></thead>
+          <tbody>
+          {% set total_threats = threat_dist.values() | sum or 1 %}
+          {% for threat, count in threat_dist.items() %}
+          <tr>
+            <td style="font-size:.82rem;">{{ threat.replace('_',' ') }}</td>
+            <td>{{ count }}</td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div style="height:5px;border-radius:3px;background:var(--accent);
+                  width:{{ [count/total_threats*120, 120]|min | int }}px;"></div>
+                {{ "%.1f"|format(count/total_threats*100) }}%
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const threatData   = {{ threat_dist | tojson }};
+const productData  = {{ products[:12] | tojson }};
+
+const threatLabels = Object.keys(threatData).map(k => k.replace(/_/g,' '));
+const threatCounts = Object.values(threatData);
+
+new Chart(document.getElementById('threatChart'), {
+  type: 'bar',
+  data: {
+    labels: threatLabels,
+    datasets: [{
+      label: 'CVE',
+      data: threatCounts,
+      backgroundColor: '#f85149'
+    }]
+  },
+  options: {
+    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+    scales: {
+      x: { ticks:{color:'#8b949e'}, grid:{color:'#21262d'} },
+      y: { ticks:{color:'#c9d1d9',font:{size:10}}, grid:{color:'#21262d'} }
+    },
+    plugins: { legend:{display:false} }
+  }
+});
+
+new Chart(document.getElementById('productChart'), {
+  type: 'bar',
+  data: {
+    labels: productData.map(p => p.product),
+    datasets: [
+      { label:'CRITICAL', data: productData.map(p => p.critical), backgroundColor:'#f85149' },
+      { label:'HIGH',     data: productData.map(p => p.high),     backgroundColor:'#e3b341' },
+      { label:'Other',    data: productData.map(p => p.total - p.critical - p.high),
+                          backgroundColor:'#58a6ff' }
+    ]
+  },
+  options: {
+    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+    scales: {
+      x: { stacked: true, ticks:{color:'#8b949e'}, grid:{color:'#21262d'} },
+      y: { stacked: true, ticks:{color:'#c9d1d9',font:{size:10}}, grid:{color:'#21262d'} }
+    },
+    plugins: { legend:{ position:'bottom', labels:{color:'#c9d1d9',boxWidth:10,padding:6} } }
+  }
+});
+</script>
+{% endblock %}
