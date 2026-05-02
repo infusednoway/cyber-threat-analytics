@@ -195,3 +195,210 @@ def api_mitre_stats():
 def api_scheduler_status():
     from src.utils.scheduler import get_scheduler
     return jsonify(get_scheduler().get_status())
+
+
+# ─────────────── NLP analysis ────────────────────────────────────────────────
+
+@api_bp.route("/nlp/threat_distribution")
+@login_required
+def api_nlp_threat_distribution():
+    from src.models.nlp_analyzer import get_threat_type_distribution
+    limit = request.args.get("limit", 1000, type=int)
+    return jsonify(get_threat_type_distribution(limit))
+
+
+@api_bp.route("/nlp/product_exposure")
+@login_required
+def api_nlp_product_exposure():
+    from src.models.nlp_analyzer import get_product_exposure
+    limit = request.args.get("limit", 1000, type=int)
+    return jsonify(get_product_exposure(limit))
+
+
+@api_bp.route("/nlp/keywords")
+@login_required
+def api_nlp_keywords():
+    from src.models.nlp_analyzer import get_top_keywords_across_cves
+    limit  = request.args.get("limit", 500, type=int)
+    top_n  = request.args.get("top_n", 30,  type=int)
+    return jsonify(get_top_keywords_across_cves(limit, top_n))
+
+
+@api_bp.route("/nlp/cve/<cve_id>")
+@login_required
+def api_nlp_cve(cve_id):
+    from src.models.nlp_analyzer import analyze_cve_text
+    result = analyze_cve_text(cve_id)
+    if not result:
+        return jsonify({"error": "CVE not found"}), 404
+    return jsonify(result)
+
+
+@api_bp.route("/nlp/news_sentiment")
+@login_required
+def api_nlp_news_sentiment():
+    from src.models.nlp_analyzer import analyze_news_sentiment
+    limit = request.args.get("limit", 100, type=int)
+    return jsonify(analyze_news_sentiment(limit))
+
+
+# ─────────────── risk scoring ────────────────────────────────────────────────
+
+@api_bp.route("/risk/top")
+@login_required
+def api_risk_top():
+    from src.models.risk_scorer import get_top_risk_cves
+    n     = request.args.get("n",     20,  type=int)
+    limit = request.args.get("limit", 500, type=int)
+    return jsonify(get_top_risk_cves(n=n, limit=limit))
+
+
+@api_bp.route("/risk/distribution")
+@login_required
+def api_risk_distribution():
+    from src.models.risk_scorer import get_risk_distribution
+    limit = request.args.get("limit", 1000, type=int)
+    return jsonify(get_risk_distribution(limit))
+
+
+@api_bp.route("/risk/cve/<cve_id>")
+@login_required
+def api_risk_cve(cve_id):
+    from src.models.risk_scorer import get_risk_score_for_cve
+    result = get_risk_score_for_cve(cve_id)
+    if not result:
+        return jsonify({"error": "CVE not found"}), 404
+    return jsonify(result)
+
+
+@api_bp.route("/risk/trend")
+@login_required
+def api_risk_trend():
+    from src.models.risk_scorer import get_risk_trend
+    days = request.args.get("days", 30, type=int)
+    return jsonify(get_risk_trend(days))
+
+
+@api_bp.route("/risk/high_with_exploit")
+@login_required
+def api_risk_high_exploit():
+    from src.models.risk_scorer import get_high_risk_with_exploit
+    limit = request.args.get("limit", 500, type=int)
+    return jsonify(get_high_risk_with_exploit(limit))
+
+
+@api_bp.route("/risk/explain/<cve_id>")
+@login_required
+def api_risk_explain(cve_id):
+    from src.models.risk_scorer import explain_score
+    text = explain_score(cve_id)
+    if not text:
+        return jsonify({"error": "CVE not found"}), 404
+    return jsonify({"cve_id": cve_id, "explanation": text})
+
+
+# ─────────────── Shodan exposure ─────────────────────────────────────────────
+
+@api_bp.route("/shodan/status")
+@login_required
+def api_shodan_status():
+    from src.collectors.shodan_collector import get_api_status
+    return jsonify(get_api_status())
+
+
+@api_bp.route("/shodan/exposure/<cve_id>")
+@login_required
+def api_shodan_exposure(cve_id):
+    from src.collectors.shodan_collector import enrich_cve_with_exposure
+    return jsonify(enrich_cve_with_exposure(cve_id))
+
+
+@api_bp.route("/shodan/hosts/<cve_id>")
+@login_required
+def api_shodan_hosts(cve_id):
+    from src.collectors.shodan_collector import search_hosts_for_cve
+    limit = request.args.get("limit", 20, type=int)
+    return jsonify(search_hosts_for_cve(cve_id, limit=limit))
+
+
+@api_bp.route("/shodan/port_stats")
+@login_required
+def api_shodan_port_stats():
+    from src.collectors.shodan_collector import get_port_stats
+    return jsonify(get_port_stats())
+
+
+# ─────────────── report builder ──────────────────────────────────────────────
+
+@api_bp.route("/report/executive")
+@login_required
+def api_report_executive():
+    from src.utils.report_builder import build_executive_summary
+    date_from = request.args.get("from", "")
+    date_to   = request.args.get("to",   "")
+    return jsonify(build_executive_summary(date_from, date_to))
+
+
+@api_bp.route("/report/full")
+@login_required
+def api_report_full():
+    from src.utils.report_builder import build_full_report
+    date_from = request.args.get("from", "")
+    date_to   = request.args.get("to",   "")
+    return jsonify(build_full_report(date_from, date_to))
+
+
+@api_bp.route("/report/weekly")
+@login_required
+def api_report_weekly():
+    from src.utils.report_builder import build_weekly_digest
+    return jsonify(build_weekly_digest())
+
+
+@api_bp.route("/report/severity_heatmap")
+@login_required
+def api_severity_heatmap():
+    from src.utils.report_builder import get_severity_heatmap
+    weeks = request.args.get("weeks", 8, type=int)
+    return jsonify(get_severity_heatmap(weeks))
+
+
+@api_bp.route("/report/cvss_percentiles")
+@login_required
+def api_cvss_percentiles():
+    from src.utils.report_builder import get_cvss_percentiles
+    bins = request.args.get("bins", 10, type=int)
+    return jsonify(get_cvss_percentiles(bins))
+
+
+@api_bp.route("/report/compare_periods")
+@login_required
+def api_compare_periods():
+    from src.utils.report_builder import compare_periods
+    days_a = request.args.get("days_a", 7,  type=int)
+    days_b = request.args.get("days_b", 14, type=int)
+    return jsonify(compare_periods(days_a, days_b))
+
+
+# ─────────────── notifications ───────────────────────────────────────────────
+
+@api_bp.route("/notifications/history")
+@login_required
+def api_notifications_history():
+    from src.utils.notifier import get_notification_history
+    limit = request.args.get("limit", 50, type=int)
+    return jsonify(get_notification_history(limit))
+
+
+@api_bp.route("/notifications/unread")
+@login_required
+def api_notifications_unread():
+    from src.utils.notifier import get_unread_count
+    return jsonify({"unread": get_unread_count()})
+
+
+@api_bp.route("/notifications/channels")
+@login_required
+def api_notifications_channels():
+    from src.utils.notifier import check_channels
+    return jsonify(check_channels())
