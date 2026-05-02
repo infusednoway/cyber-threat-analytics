@@ -19,5 +19,8 @@ def create_app() -> Flask:
 
 
 def run(host: str = "127.0.0.1", port: int = 5000, debug: bool = False):
+    import os
+    from pathlib import Path
+    os.chdir(Path(__file__).parent.parent.parent)
     app = create_app()
-    app.run(host=host, port=port, debug=debug)
+    app.run(host=host, port=port, debug=debug, use_reloader=False)

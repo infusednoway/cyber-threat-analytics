@@ -22,7 +22,7 @@ def _count_recent_exploits(hours: int = 24) -> int:
     cutoff = datetime.utcnow() - timedelta(hours=hours)
     count = 0
     for row in get_exploits(limit=200):
-        published_str = row[3]
+        published_str = row.get("published") if hasattr(row, "get") else row[3]
         if not published_str:
             continue
         try:
