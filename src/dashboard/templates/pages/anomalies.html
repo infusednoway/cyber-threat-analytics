@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Аномалии{% endblock %}
+{% block page_title %}Детектор аномалий{% endblock %}
+{% block head %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>{% endblock %}
+{% block content %}
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card p-3">
+      <div class="stat-value text-danger" id="anomTotal">—</div>
+      <div class="stat-label">Аномалий обнаружено</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card p-3">
+      <div class="stat-value" style="color:var(--warn)" id="anomHigh">—</div>
+      <div class="stat-label">Высокой значимости (z ≥ 3σ)</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card p-3">
+      <div class="stat-value" style="color:var(--accent)" id="anomBound">—</div>
+      <div class="stat-label">Верхняя граница нормы (CVE/день)</div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header">Временной ряд CVE с полосой нормальности (±2σ)</div>
+  <div class="card-body" style="height:320px;position:relative;">
+    <canvas id="anomalyChart"></canvas>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">Обнаруженные аномалии</div>
+  <div class="card-body p-0" style="max-height:45vh;overflow-y:auto;">
+    <table class="table table-dark table-hover mb-0">
+      <thead><tr>
+        <th>Дата</th><th>Значение</th><th>Среднее (окно)</th><th>Z-оценка</th><th>Тип</th><th>Значимость</th>
+      </tr></thead>
+      <tbody id="anomTable">
+        <tr><td colspan="6" class="text-center text-muted py-3">Загрузка...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function load() {
+  const d = await fetch('/api/anomalies').then(r => r.json());
+  const s = d.summary;
+  const r = d.rolling_stats;
+
+  document.getElementById('anomTotal').textContent = s.total ?? '0';
+  document.getElementById('anomHigh').textContent  = s.high  ?? '0';
+  document.getElementById('anomBound').textContent = s.bounds?.upper_bound ?? '—';
+
+  if (r && r.length) {
+    new Chart(document.getElementById('anomalyChart'), {
+      type: 'line',
+      data: {
+        labels: r.map(x => x.date),
+        datasets: [
+          { label: 'CVE/день', data: r.map(x => x.value),
+            borderColor: '#58a6ff', borderWidth: 1.5, pointRadius: 2, fill: false },
+          { label: 'Скользящее среднее', data: r.map(x => x.mean),
+            borderColor: '#3fb950', borderWidth: 2, borderDash: [4,3], pointRadius: 0, fill: false },
+          { label: 'Верхняя граница (+2σ)', data: r.map(x => x.upper),
+            borderColor: '#f85149', borderWidth: 1, borderDash: [2,4],
+            pointRadius: 0, fill: '+1', backgroundColor: 'rgba(248,81,73,.08)' },
+          { label: 'Нижняя граница (-2σ)', data: r.map(x => x.lower),
+            borderColor: '#e3b341', borderWidth: 1, borderDash: [2,4],
+            pointRadius: 0, fill: false },
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          x: { ticks: { color:'#8b949e', maxTicksLimit:15, maxRotation:0 }, grid: { color:'#21262d' } },
+          y: { ticks: { color:'#8b949e' }, grid: { color:'#21262d' }, beginAtZero: true }
+        },
+        plugins: { legend: { labels: { color: '#c9d1d9', boxWidth: 12 } } }
+      }
+    });
+  }
+
+  const tbody = document.getElementById('anomTable');
+  const list  = s.list ?? [];
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Аномалий не обнаружено</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.reverse().map(a => `
+    <tr>
+      <td>${a.date}</td>
+      <td class="fw-bold">${a.value}</td>
+      <td>${a.mean}</td>
+      <td class="${a.z_score > 0 ? 'text-danger' : 'text-success'}">${a.z_score > 0 ? '+' : ''}${a.z_score}</td>
+      <td>${a.direction}</td>
+      <td><span style="font-size:.75rem;padding:.2em .5em;border-radius:4px;
+          background:${a.severity === 'high' ? '#f8514922' : '#e3b34122'};
+          color:${a.severity === 'high' ? '#f85149' : '#e3b341'}">
+        ${a.severity === 'high' ? 'Высокая' : 'Средняя'}
+      </span></td>
+    </tr>`).join('');
+}
+load();
+</script>
+{% endblock %}
