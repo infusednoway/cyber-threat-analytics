@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(pip install pymupdf -q 2>&1)",
+      "PowerShell(python -c \"import fitz; doc = fitz.open\\('d:/Diplom/2025_���ਨ ��ମ����஫�.pdf'\\); print\\(doc[0].get_text\\(\\)[:3000]\\)\")"
+    ]
+  }
+}

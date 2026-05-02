@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+data/threats.db
+data/classifier.pkl
+data/model_comparison.json
+venv/
+.venv/
+page_1.txt
+page_2.txt
+*.egg-info/
+.env
