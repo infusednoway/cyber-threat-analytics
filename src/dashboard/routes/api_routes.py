@@ -5,11 +5,24 @@ from flask import Blueprint, jsonify, request, Response
 from src.auth.auth import login_required, get_current_user
 from src.database.db import get_cves, get_exploits, get_news, get_total_counts
 from src.models.alerter import get_alerts
+from src.models.anomaly import get_anomaly_summary, get_rolling_stats
 from src.models.classifier import get_top_features
 from src.models.model_comparison import load_comparison
 from src.models.predictor import (
     get_severity_distribution, get_timeline_data,
     get_weekly_growth, predict_next_days,
+)
+from src.utils.statistics import (
+    get_top_cwe, get_cvss_distribution, get_exploit_type_stats,
+    get_exploit_platform_stats, get_news_source_stats, get_summary_stats,
+    get_cves_with_exploits,
+)
+from src.utils.exporter import (
+    export_cves_csv, export_exploits_csv, export_news_csv,
+    export_report_json, export_full_snapshot_json,
+)
+from src.collectors.mitre_collector import (
+    get_techniques, get_tactics_summary, search_techniques, get_mitre_stats,
 )
 
 api_bp = Blueprint("api_bp", __name__, url_prefix="/api")
@@ -87,28 +100,98 @@ def api_model_comparison():
 @api_bp.route("/export/cves")
 @login_required
 def export_cves():
-    rows = get_cves(limit=5000)
-    output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=["id", "published", "description", "cvss_score", "severity", "cwe"])
-    writer.writeheader()
-    writer.writerows(rows)
-    return Response(
-        output.getvalue(),
-        mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=cves_export.csv"},
-    )
+    return Response(export_cves_csv(), mimetype="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=cves_export.csv"})
 
 
 @api_bp.route("/export/exploits")
 @login_required
 def export_exploits():
-    rows = get_exploits(limit=5000)
-    output = io.StringIO()
-    writer = csv.DictWriter(output, fieldnames=["id", "title", "link", "published", "cve_id", "platform", "exploit_type"])
-    writer.writeheader()
-    writer.writerows(rows)
-    return Response(
-        output.getvalue(),
-        mimetype="text/csv",
-        headers={"Content-Disposition": "attachment; filename=exploits_export.csv"},
-    )
+    return Response(export_exploits_csv(), mimetype="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=exploits_export.csv"})
+
+
+@api_bp.route("/export/news")
+@login_required
+def export_news():
+    return Response(export_news_csv(), mimetype="text/csv",
+                    headers={"Content-Disposition": "attachment; filename=news_export.csv"})
+
+
+@api_bp.route("/export/snapshot")
+@login_required
+def export_snapshot():
+    return Response(export_full_snapshot_json(), mimetype="application/json",
+                    headers={"Content-Disposition": "attachment; filename=snapshot.json"})
+
+
+@api_bp.route("/export/report/<int:report_id>")
+@login_required
+def export_report(report_id):
+    fmt = request.args.get("format", "json")
+    if fmt == "pdf":
+        from src.utils.exporter import build_pdf_report
+        pdf = build_pdf_report(report_id)
+        return Response(pdf, mimetype="application/pdf",
+                        headers={"Content-Disposition": f"attachment; filename=report_{report_id}.pdf"})
+    return Response(export_report_json(report_id), mimetype="application/json",
+                    headers={"Content-Disposition": f"attachment; filename=report_{report_id}.json"})
+
+
+@api_bp.route("/statistics")
+@login_required
+def api_statistics():
+    return jsonify({
+        "summary":          get_summary_stats(),
+        "top_cwe":          get_top_cwe(10),
+        "cvss_distribution": get_cvss_distribution(),
+        "exploit_types":    get_exploit_type_stats(),
+        "exploit_platforms": get_exploit_platform_stats(),
+        "news_sources":     get_news_source_stats(),
+        "cves_with_exploits": get_cves_with_exploits(),
+    })
+
+
+@api_bp.route("/anomalies")
+@login_required
+def api_anomalies():
+    window = request.args.get("window", 7, type=int)
+    sigma  = request.args.get("sigma",  2.0, type=float)
+    return jsonify({
+        "summary":      get_anomaly_summary(),
+        "rolling_stats": get_rolling_stats(window),
+    })
+
+
+@api_bp.route("/mitre/techniques")
+@login_required
+def api_mitre_techniques():
+    tactic = request.args.get("tactic")
+    limit  = request.args.get("limit", 100, type=int)
+    return jsonify(get_techniques(tactic=tactic, limit=limit))
+
+
+@api_bp.route("/mitre/tactics")
+@login_required
+def api_mitre_tactics():
+    return jsonify(get_tactics_summary())
+
+
+@api_bp.route("/mitre/search")
+@login_required
+def api_mitre_search():
+    q = request.args.get("q", "")
+    return jsonify(search_techniques(q))
+
+
+@api_bp.route("/mitre/stats")
+@login_required
+def api_mitre_stats():
+    return jsonify(get_mitre_stats())
+
+
+@api_bp.route("/scheduler/status")
+@login_required
+def api_scheduler_status():
+    from src.utils.scheduler import get_scheduler
+    return jsonify(get_scheduler().get_status())
