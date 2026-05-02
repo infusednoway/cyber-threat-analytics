@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Система предиктивной аналитики киберугроз</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    body { background:#0d1117; color:#c9d1d9; font-family:'Segoe UI',sans-serif; }
+    .navbar { background:#161b22 !important; border-bottom:1px solid #30363d; }
+    .card  { background:#161b22; border:1px solid #30363d; border-radius:10px; }
+    .card-header { background:#1c2128; border-bottom:1px solid #30363d; font-weight:600;
+                   font-size:.82rem; letter-spacing:.5px; text-transform:uppercase; color:#8b949e; }
+    /* stat cards */
+    .stat-card { border-left:4px solid; }
+    .stat-card.total   { border-color:#58a6ff; }
+    .stat-card.crit    { border-color:#f85149; }
+    .stat-card.high    { border-color:#e3b341; }
+    .stat-card.exploit { border-color:#d2a8ff; }
+    .stat-value { font-size:2rem; font-weight:700; line-height:1; }
+    .stat-label { font-size:.73rem; color:#8b949e; margin-top:4px; }
+    /* severity badges */
+    .badge-sev { font-size:.68rem; padding:.22em .48em; }
+    .badge-CRITICAL { background:#f85149 !important; }
+    .badge-HIGH     { background:#e3b341 !important; color:#000 !important; }
+    .badge-MEDIUM   { background:#3fb950 !important; color:#000 !important; }
+    .badge-LOW      { background:#58a6ff !important; }
+    .badge-UNKNOWN  { background:#6e7681 !important; }
+    /* exploit type badges */
+    .badge-type { font-size:.65rem; padding:.2em .4em; background:#30363d; border-radius:4px; }
+    /* alerts */
+    .alert-bar { border-radius:8px; padding:.6rem 1rem; margin-bottom:.5rem;
+                 font-size:.83rem; display:flex; align-items:center; gap:.6rem; }
+    .alert-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+    /* tables */
+    table { font-size:.8rem; }
+    thead th { color:#8b949e; border-color:#30363d !important; font-weight:500;
+               text-transform:uppercase; font-size:.68rem; letter-spacing:.4px; }
+    td,th { border-color:#30363d !important; }
+    tr:hover td { background:#1c2128 !important; }
+    a { color:#58a6ff; } a:hover { color:#79c0ff; }
+    .news-source { font-size:.68rem; color:#8b949e; }
+    .growth-pos { color:#f85149; } .growth-neg { color:#3fb950; }
+    /* model comparison */
+    .model-best td { color:#3fb950; font-weight:600; }
+    .metric-bar { height:6px; border-radius:3px; background:#58a6ff; display:inline-block; vertical-align:middle; }
+    ::-webkit-scrollbar { width:6px; height:6px; }
+    ::-webkit-scrollbar-track { background:#161b22; }
+    ::-webkit-scrollbar-thumb { background:#30363d; border-radius:3px; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark mb-4">
+  <div class="container-fluid">
+    <span class="navbar-brand fw-bold">&#9888; Предиктивная аналитика киберугроз</span>
+    <span id="lastUpdate" class="text-muted small"></span>
+  </div>
+</nav>
+
+<div class="container-fluid px-4">
+
+  <!-- ===== АЛЕРТЫ ===== -->
+  <div id="alertsBlock" class="mb-4"></div>
+
+  <!-- ===== СТАТИСТИКА ===== -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="card stat-card total p-3">
+        <div class="stat-value" id="statTotal">—</div>
+        <div class="stat-label">Всего CVE в базе</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card stat-card crit p-3">
+        <div class="stat-value text-danger" id="statCritical">—</div>
+        <div class="stat-label">Критических уязвимостей</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card stat-card high p-3">
+        <div class="stat-value" style="color:#e3b341" id="statHigh">—</div>
+        <div class="stat-label">Высокой опасности</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="card stat-card exploit p-3">
+        <div class="stat-value" style="color:#d2a8ff" id="statExploits">—</div>
+        <div class="stat-label">Публичных эксплойтов</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ГРАФИК + ДОNUT ===== -->
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-xl-8">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span>Динамика CVE и прогноз на 14 дней</span>
+          <span id="growthBadge" class="small"></span>
+        </div>
+        <div class="card-body" style="position:relative;height:300px;">
+          <canvas id="timelineChart"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-xl-4">
+      <div class="card h-100">
+        <div class="card-header">Распределение по уровню угрозы</div>
+        <div class="card-body d-flex align-items-center justify-content-center" style="height:300px;">
+          <canvas id="severityChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CVE + НОВОСТИ ===== -->
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-xl-8">
+      <div class="card">
+        <div class="card-header">Последние уязвимости (CVE)</div>
+        <div class="card-body p-0" style="max-height:380px;overflow-y:auto;">
+          <table class="table table-dark table-hover mb-0">
+            <thead><tr>
+              <th>ID</th><th>Дата</th><th>Описание</th><th>CVSS</th><th>Уровень</th><th>CWE</th>
+            </tr></thead>
+            <tbody id="cveTableBody">
+              <tr><td colspan="6" class="text-center text-muted py-3">Загрузка...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-xl-4">
+      <div class="card">
+        <div class="card-header">Новости ИБ</div>
+        <div class="card-body p-0" style="max-height:380px;overflow-y:auto;">
+          <ul class="list-group list-group-flush" id="newsList">
+            <li class="list-group-item bg-transparent text-muted text-center py-3">Загрузка...</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ЭКСПЛОЙТЫ ===== -->
+  <div class="row g-3 mb-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">Публичные эксплойты (Exploit-DB)</div>
+        <div class="card-body p-0" style="max-height:320px;overflow-y:auto;">
+          <table class="table table-dark table-hover mb-0">
+            <thead><tr>
+              <th>Название</th><th>CVE</th><th>Платформа</th><th>Тип</th><th>Дата</th>
+            </tr></thead>
+            <tbody id="exploitsTableBody">
+              <tr><td colspan="5" class="text-center text-muted py-3">Загрузка...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== СРАВНЕНИЕ МОДЕЛЕЙ ===== -->
+  <div class="row g-3 mb-4">
+    <div class="col-12 col-xl-6">
+      <div class="card">
+        <div class="card-header">Сравнение моделей машинного обучения (5-fold кросс-валидация)</div>
+        <div class="card-body p-0">
+          <table class="table table-dark table-hover mb-0" id="modelTable">
+            <thead><tr>
+              <th>Модель</th><th>Точность</th><th>F1-мера</th><th>Precision</th><th>Recall</th>
+            </tr></thead>
+            <tbody id="modelTableBody">
+              <tr><td colspan="5" class="text-center text-muted py-3">Загрузка...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-xl-6">
+      <div class="card">
+        <div class="card-header">Топ ключевых признаков классификатора</div>
+        <div class="card-body" style="position:relative;height:260px;">
+          <canvas id="featuresChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+const SEV_COLORS = { CRITICAL:'#f85149', HIGH:'#e3b341', MEDIUM:'#3fb950', LOW:'#58a6ff', UNKNOWN:'#6e7681' };
+let timelineChart, severityChart, featuresChart;
+
+async function api(url) {
+  const r = await fetch(url);
+  return r.json();
+}
+
+/* --- АЛЕРТЫ --- */
+async function loadAlerts() {
+  const items = await api('/api/alerts');
+  const block = document.getElementById('alertsBlock');
+  block.innerHTML = items.map(a => `
+    <div class="alert-bar" style="background:${a.color}18;border:1px solid ${a.color}44">
+      <div class="alert-dot" style="background:${a.color}"></div>
+      <strong style="color:${a.color}">${a.label}</strong>
+      <span>${a.message}</span>
+    </div>`).join('');
+}
+
+/* --- СВОДКА --- */
+async function loadSummary() {
+  const d = await api('/api/summary');
+  document.getElementById('statTotal').textContent    = d.cve_total.toLocaleString('ru');
+  document.getElementById('statCritical').textContent = d.critical_count.toLocaleString('ru');
+  document.getElementById('statHigh').textContent     = d.high_count.toLocaleString('ru');
+  document.getElementById('statExploits').textContent = d.exploit_total.toLocaleString('ru');
+
+  const grow = d.weekly_growth, el = document.getElementById('growthBadge');
+  if (grow > 0)       el.innerHTML = `<span class="growth-pos">&#9650; ${grow}% за неделю</span>`;
+  else if (grow < 0)  el.innerHTML = `<span class="growth-neg">&#9660; ${Math.abs(grow)}% за неделю</span>`;
+  else                el.textContent = 'Без изменений';
+
+  const sev = d.severity;
+  const labels = Object.keys(sev), values = Object.values(sev);
+  const colors = labels.map(l => SEV_COLORS[l] || '#6e7681');
+  if (severityChart) severityChart.destroy();
+  severityChart = new Chart(document.getElementById('severityChart'), {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth:2, borderColor:'#161b22' }] },
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins: { legend: { position:'bottom', labels:{ color:'#c9d1d9', boxWidth:12, padding:8 } } } },
+  });
+}
+
+/* --- ГРАФИК --- */
+async function loadTimeline() {
+  const d = await api('/api/timeline');
+  const allDates  = [...d.dates, ...d.pred_dates];
+  const allCounts = [...d.counts,  ...Array(d.pred_dates.length).fill(null)];
+  const allPreds  = [...Array(d.dates.length).fill(null), ...d.pred_counts];
+  const allMA     = [...d.ma7,     ...Array(d.pred_dates.length).fill(null)];
+  if (timelineChart) timelineChart.destroy();
+  timelineChart = new Chart(document.getElementById('timelineChart'), {
+    type: 'line',
+    data: { labels: allDates, datasets: [
+      { label:'Фактические CVE', data:allCounts, borderColor:'#58a6ff', backgroundColor:'rgba(88,166,255,.1)',
+        borderWidth:1.5, pointRadius:2, fill:true, tension:.3 },
+      { label:'Скользящее среднее (7 дн)', data:allMA, borderColor:'#3fb950', borderWidth:2,
+        borderDash:[4,3], pointRadius:0, fill:false, tension:.4 },
+      { label:'Прогноз (14 дней)', data:allPreds, borderColor:'#f85149', backgroundColor:'rgba(248,81,73,.1)',
+        borderWidth:2, borderDash:[6,3], pointRadius:3, fill:true, tension:.3 },
+    ]},
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:'index', intersect:false },
+      scales: {
+        x: { ticks:{ color:'#8b949e', maxTicksLimit:12, maxRotation:0 }, grid:{ color:'#21262d' } },
+        y: { ticks:{ color:'#8b949e' }, grid:{ color:'#21262d' }, beginAtZero:true },
+      },
+      plugins: { legend:{ labels:{ color:'#c9d1d9', boxWidth:14 } } },
+    },
+  });
+}
+
+/* --- CVE --- */
+async function loadCVEs() {
+  const rows = await api('/api/cves');
+  const tbody = document.getElementById('cveTableBody');
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Нет данных</td></tr>'; return; }
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td><a href="https://nvd.nist.gov/vuln/detail/${r.id}" target="_blank" class="text-nowrap">${r.id}</a></td>
+      <td class="text-nowrap">${r.published}</td>
+      <td>${r.description}</td>
+      <td class="text-center">${r.cvss_score ?? '—'}</td>
+      <td><span class="badge badge-sev badge-${r.severity}">${r.severity}</span></td>
+      <td class="text-nowrap">${r.cwe || '—'}</td>
+    </tr>`).join('');
+}
+
+/* --- НОВОСТИ --- */
+async function loadNews() {
+  const items = await api('/api/news');
+  const ul = document.getElementById('newsList');
+  if (!items.length) { ul.innerHTML = '<li class="list-group-item bg-transparent text-muted text-center">Нет данных</li>'; return; }
+  ul.innerHTML = items.map(n => `
+    <li class="list-group-item bg-transparent border-secondary py-2 px-3">
+      <a href="${n.link}" target="_blank" class="d-block mb-1">${n.title}</a>
+      <span class="news-source">${n.source} &bull; ${(n.published||'').slice(0,16)}</span>
+    </li>`).join('');
+}
+
+/* --- ЭКСПЛОЙТЫ --- */
+async function loadExploits() {
+  const rows = await api('/api/exploits');
+  const tbody = document.getElementById('exploitsTableBody');
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Нет данных</td></tr>'; return; }
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td><a href="${r.link}" target="_blank">${r.title}</a></td>
+      <td class="text-nowrap">${r.cve_id !== '—' ? `<a href="https://nvd.nist.gov/vuln/detail/${r.cve_id}" target="_blank">${r.cve_id}</a>` : '—'}</td>
+      <td>${r.platform}</td>
+      <td><span class="badge-type">${r.exploit_type}</span></td>
+      <td class="text-nowrap">${(r.published||'').slice(0,16)}</td>
+    </tr>`).join('');
+}
+
+/* --- СРАВНЕНИЕ МОДЕЛЕЙ --- */
+async function loadModelComparison() {
+  const rows = await api('/api/model_comparison');
+  const tbody = document.getElementById('modelTableBody');
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Нет данных — запустите python main.py compare</td></tr>'; return; }
+  const best = rows[0];
+  tbody.innerHTML = rows.map((r, i) => {
+    const cls = i === 0 ? 'model-best' : '';
+    const bar = (v) => `<span class="metric-bar" style="width:${Math.round(v*100)}px"></span> ${(v*100).toFixed(1)}%`;
+    return `<tr class="${cls}">
+      <td>${r.model}${i===0?' <span style="color:#e3b341;font-size:.7rem">&#9733; лучшая</span>':''}</td>
+      <td>${bar(r.accuracy)}</td>
+      <td>${bar(r.f1)}</td>
+      <td>${bar(r.precision)}</td>
+      <td>${bar(r.recall)}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* --- ПРИЗНАКИ --- */
+async function loadFeatures() {
+  const items = await api('/api/features');
+  if (!items.length) return;
+  if (featuresChart) featuresChart.destroy();
+  featuresChart = new Chart(document.getElementById('featuresChart'), {
+    type: 'bar',
+    data: {
+      labels: items.map(i => i.term),
+      datasets: [{ label:'Важность', data: items.map(i => i.importance), backgroundColor:'#58a6ff' }],
+    },
+    options: {
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      scales: {
+        x: { ticks:{ color:'#8b949e' }, grid:{ color:'#21262d' } },
+        y: { ticks:{ color:'#c9d1d9', font:{ size:11 } }, grid:{ color:'#21262d' } },
+      },
+      plugins: { legend:{ display:false } },
+    },
+  });
+}
+
+document.getElementById('lastUpdate').textContent = 'Обновлено: ' + new Date().toLocaleString('ru');
+
+Promise.all([
+  loadAlerts(),
+  loadSummary(),
+  loadTimeline(),
+  loadCVEs(),
+  loadNews(),
+  loadExploits(),
+  loadModelComparison(),
+  loadFeatures(),
+]);
+</script>
+</body>
+</html>
