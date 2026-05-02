@@ -10,3 +10,4 @@ page_1.txt
 page_2.txt
 *.egg-info/
 .env
+.claude/

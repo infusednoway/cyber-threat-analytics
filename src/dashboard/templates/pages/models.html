@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Модели ML{% endblock %}
+{% block page_title %}Сравнение моделей машинного обучения{% endblock %}
+{% block head %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>{% endblock %}
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-12 col-lg-7">
+    <div class="card">
+      <div class="card-header">Результаты 5-fold кросс-валидации</div>
+      <div class="card-body p-0">
+        <table class="table table-dark table-hover mb-0">
+          <thead><tr><th>Модель</th><th>Точность</th><th>F1-мера</th><th>Precision</th><th>Recall</th></tr></thead>
+          <tbody>
+          {% for r in comparison %}
+            <tr {% if loop.first %}style="color:var(--ok);font-weight:600;"{% endif %}>
+              <td>{{ r.model }} {% if loop.first %}<span style="color:var(--warn);font-size:.75rem;">★ лучшая</span>{% endif %}</td>
+              <td>{{ "%.1f"|format(r.accuracy*100) }}%</td>
+              <td>{{ "%.1f"|format(r.f1*100) }}%</td>
+              <td>{{ "%.1f"|format(r.precision*100) }}%</td>
+              <td>{{ "%.1f"|format(r.recall*100) }}%</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5" class="text-center text-muted py-3">
+              Нет данных. Запустите <code>python main.py compare</code>
+            </td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-5">
+    <div class="card">
+      <div class="card-header">Сравнение F1-меры</div>
+      <div class="card-body" style="height:220px;position:relative;">
+        <canvas id="modelChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">Топ-20 ключевых признаков классификатора</div>
+  <div class="card-body" style="height:300px;position:relative;">
+    <canvas id="featuresChart"></canvas>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const comp = {{ comparison | tojson }};
+const feat = {{ features | tojson }};
+
+if (comp.length) {
+  new Chart(document.getElementById('modelChart'), {
+    type:'bar',
+    data:{ labels: comp.map(r=>r.model),
+           datasets:[{ label:'F1-мера', data: comp.map(r=>r.f1),
+                       backgroundColor:['#3fb950','#58a6ff','#d2a8ff'] }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      scales:{ x:{ ticks:{ color:'#8b949e' }, grid:{ color:'#21262d' } },
+               y:{ ticks:{ color:'#8b949e' }, grid:{ color:'#21262d' }, min:0, max:1 } },
+      plugins:{ legend:{ display:false } } }
+  });
+}
+
+if (feat.length) {
+  new Chart(document.getElementById('featuresChart'), {
+    type:'bar',
+    data:{ labels: feat.map(f=>f[0]),
+           datasets:[{ label:'Важность', data: feat.map(f=>f[1]), backgroundColor:'#58a6ff' }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      scales:{ x:{ ticks:{ color:'#8b949e' }, grid:{ color:'#21262d' } },
+               y:{ ticks:{ color:'#c9d1d9', font:{ size:11 } }, grid:{ color:'#21262d' } } },
+      plugins:{ legend:{ display:false } } }
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Дашборд{% endblock %}
+{% block page_title %}Главный дашборд{% endblock %}
+{% block head %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>{% endblock %}
+{% block content %}
+
+{% for a in alerts %}
+<div class="alert-bar" style="background:{{ a.color }}18;border:1px solid {{ a.color }}44;">
+  <div class="alert-dot" style="background:{{ a.color }}"></div>
+  <strong style="color:{{ a.color }}">{{ a.label }}</strong>
+  <span style="font-size:.83rem;">{{ a.message }}</span>
+</div>
+{% endfor %}
+
+<div class="row g-3 mt-1 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card stat-card p-3" style="border-color:var(--accent)">
+      <div class="stat-value">{{ cve_total|default(0) }}</div>
+      <div class="stat-label">Всего CVE</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card p-3" style="border-color:var(--danger)">
+      <div class="stat-value text-danger">{{ severity.get('CRITICAL', 0) }}</div>
+      <div class="stat-label">Критических</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card p-3" style="border-color:var(--warn)">
+      <div class="stat-value" style="color:var(--warn)">{{ severity.get('HIGH', 0) }}</div>
+      <div class="stat-label">Высокой опасности</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card stat-card p-3" style="border-color:var(--purple)">
+      <div class="stat-value" style="color:var(--purple)">{{ exploit_total|default(0) }}</div>
+      <div class="stat-label">Публичных эксплойтов</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-12 col-xl-8">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between">
+        <span>Динамика CVE и прогноз</span>
+        <span class="small {% if growth > 0 %}text-danger{% else %}text-success{% endif %}">
+          {% if growth > 0 %}▲{% else %}▼{% endif %} {{ growth }}% за неделю
+        </span>
+      </div>
+      <div class="card-body" style="height:280px;position:relative;">
+        <canvas id="timelineChart"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-4">
+    <div class="card">
+      <div class="card-header">Распределение угроз</div>
+      <div class="card-body d-flex align-items-center justify-content-center" style="height:280px;">
+        <canvas id="severityChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-4"><a href="/cves"     class="btn btn-outline-secondary w-100"><i class="bi bi-shield-exclamation"></i> Все CVE</a></div>
+  <div class="col-md-4"><a href="/exploits" class="btn btn-outline-secondary w-100"><i class="bi bi-bug"></i> Эксплойты</a></div>
+  <div class="col-md-4"><a href="/reports/new" class="btn btn-primary w-100"><i class="bi bi-plus"></i> Новый отчёт</a></div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const SEV = { CRITICAL:'#f85149', HIGH:'#e3b341', MEDIUM:'#3fb950', LOW:'#58a6ff', UNKNOWN:'#6e7681' };
+async function load() {
+  const t = await fetch('/api/timeline').then(r=>r.json());
+  const allDates  = [...t.dates, ...t.pred_dates];
+  const allCounts = [...t.counts,  ...Array(t.pred_dates.length).fill(null)];
+  const allPreds  = [...Array(t.dates.length).fill(null), ...t.pred_counts];
+  const allMA     = [...t.ma7, ...Array(t.pred_dates.length).fill(null)];
+  new Chart(document.getElementById('timelineChart'), {
+    type:'line',
+    data:{ labels:allDates, datasets:[
+      { label:'CVE', data:allCounts, borderColor:'#58a6ff', backgroundColor:'rgba(88,166,255,.1)',
+        borderWidth:1.5, pointRadius:2, fill:true, tension:.3 },
+      { label:'MA7', data:allMA, borderColor:'#3fb950', borderWidth:2,
+        borderDash:[4,3], pointRadius:0, fill:false },
+      { label:'Прогноз', data:allPreds, borderColor:'#f85149', backgroundColor:'rgba(248,81,73,.1)',
+        borderWidth:2, borderDash:[6,3], pointRadius:3, fill:true },
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      scales:{ x:{ ticks:{ color:'#8b949e', maxTicksLimit:10, maxRotation:0 }, grid:{ color:'#21262d' } },
+               y:{ ticks:{ color:'#8b949e' }, grid:{ color:'#21262d' }, beginAtZero:true } },
+      plugins:{ legend:{ labels:{ color:'#c9d1d9', boxWidth:12 } } } }
+  });
+
+  const s = await fetch('/api/summary').then(r=>r.json());
+  const sev = s.severity;
+  new Chart(document.getElementById('severityChart'), {
+    type:'doughnut',
+    data:{ labels:Object.keys(sev),
+      datasets:[{ data:Object.values(sev),
+        backgroundColor:Object.keys(sev).map(k=>SEV[k]||'#6e7681'),
+        borderWidth:2, borderColor:'#161b22' }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'bottom', labels:{ color:'#c9d1d9', boxWidth:12, padding:8 } } } }
+  });
+}
+load();
+</script>
+{% endblock %}

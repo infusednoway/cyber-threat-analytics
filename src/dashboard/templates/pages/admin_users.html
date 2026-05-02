@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Управление пользователями{% endblock %}
+{% block page_title %}Управление пользователями{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header">Пользователи системы — {{ users|length }}</div>
+  <div class="card-body p-0">
+    <table class="table table-dark table-hover mb-0">
+      <thead><tr><th>ID</th><th>Логин</th><th>Email</th><th>Роль</th><th>Активен</th><th>Зарегистрирован</th><th>Последний вход</th><th>Действия</th></tr></thead>
+      <tbody>
+      {% for u in users %}
+        <tr>
+          <td class="text-muted">{{ u.id }}</td>
+          <td class="fw-semibold">{{ u.username }}</td>
+          <td class="text-muted small">{{ u.email }}</td>
+          <td>
+            <form method="POST" action="/admin/users/{{ u.id }}/role" class="d-flex gap-1">
+              <select name="role_id" class="form-select form-select-sm" style="width:130px;">
+                <option value="1" {% if u.role_name == 'admin' %}selected{% endif %}>admin</option>
+                <option value="2" {% if u.role_name == 'analyst' %}selected{% endif %}>analyst</option>
+                <option value="3" {% if u.role_name == 'viewer' %}selected{% endif %}>viewer</option>
+              </select>
+              <button type="submit" class="btn btn-sm btn-outline-secondary py-0">✓</button>
+            </form>
+          </td>
+          <td>
+            {% if u.is_active %}<span class="text-success">●</span> Да
+            {% else %}<span class="text-danger">●</span> Нет{% endif %}
+          </td>
+          <td class="text-muted small text-nowrap">{{ u.created_at[:10] if u.created_at else '—' }}</td>
+          <td class="text-muted small text-nowrap">{{ u.last_login[:10] if u.last_login else 'Никогда' }}</td>
+          <td>
+            <form method="POST" action="/admin/users/{{ u.id }}/toggle">
+              <button class="btn btn-sm {% if u.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %} py-0">
+                {% if u.is_active %}Блок{% else %}Разблок{% endif %}
+              </button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

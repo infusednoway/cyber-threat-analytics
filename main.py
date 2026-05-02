@@ -13,6 +13,7 @@
 import sys
 
 from src.database.db import init_db
+from src.auth.auth import init_default_admin
 
 
 def cmd_collect():
@@ -21,7 +22,6 @@ def cmd_collect():
     from src.collectors.exploit_collector import fetch_exploits
 
     print("=== Сбор данных ===")
-    init_db()
     fetch_cves(days_back=90, max_results=2000)
     fetch_news()
     fetch_exploits()
@@ -36,7 +36,7 @@ def cmd_train():
     if model:
         print("Модель обучена успешно.\n")
     else:
-        print("Обучение не выполнено: недостаточно данных.\n")
+        print("Недостаточно данных. Сначала запустите: python main.py collect\n")
 
 
 def cmd_compare():
@@ -57,6 +57,7 @@ def cmd_dashboard():
 
     print("=== Запуск дашборда ===")
     print("Откройте в браузере: http://127.0.0.1:5000")
+    print("Логин: admin / Пароль: admin123")
     run(debug=False)
 
 
@@ -69,16 +70,17 @@ COMMANDS = {
 
 
 def main():
+    init_db()
+    init_default_admin()
+
     cmd = sys.argv[1] if len(sys.argv) > 1 else "all"
 
     if cmd == "all":
-        init_db()
         cmd_collect()
         cmd_train()
         cmd_compare()
         cmd_dashboard()
     elif cmd in COMMANDS:
-        init_db()
         COMMANDS[cmd]()
     else:
         print(__doc__)

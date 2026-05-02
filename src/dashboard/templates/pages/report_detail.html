@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Отчёт #{{ report.id }}{% endblock %}
+{% block page_title %}Отчёт #{{ report.id }}{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-12 col-lg-8">
+    <div class="card mb-3">
+      <div class="card-header">{{ report.title }}</div>
+      <div class="card-body">
+        <div class="row g-3 text-center mb-4">
+          <div class="col-3">
+            <div class="fw-bold" style="font-size:1.8rem;color:var(--accent);">{{ report.total_cves }}</div>
+            <div class="small text-muted">Всего CVE</div>
+          </div>
+          <div class="col-3">
+            <div class="fw-bold text-danger" style="font-size:1.8rem;">{{ report.critical }}</div>
+            <div class="small text-muted">CRITICAL</div>
+          </div>
+          <div class="col-3">
+            <div class="fw-bold" style="font-size:1.8rem;color:var(--warn);">{{ report.high }}</div>
+            <div class="small text-muted">HIGH</div>
+          </div>
+          <div class="col-3">
+            <div class="fw-bold" style="font-size:1.8rem;color:var(--ok);">{{ report.medium }}</div>
+            <div class="small text-muted">MEDIUM</div>
+          </div>
+        </div>
+        {% if report.notes %}
+        <hr style="border-color:var(--border)"/>
+        <div class="small text-muted mb-1">Примечания</div>
+        <p style="font-size:.88rem;">{{ report.notes }}</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-4">
+    <div class="card">
+      <div class="card-header">Метаданные</div>
+      <div class="card-body small">
+        <div class="mb-2"><span class="text-muted">Автор:</span> {{ report.author or '—' }}</div>
+        <div class="mb-2"><span class="text-muted">Создан:</span> {{ report.created_at[:16] }}</div>
+        <div class="mb-2"><span class="text-muted">Период:</span> {{ report.date_from or '—' }} — {{ report.date_to or '—' }}</div>
+        <hr style="border-color:var(--border)"/>
+        <a href="/reports" class="btn btn-outline-secondary btn-sm w-100">← Все отчёты</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Вход — CyberThreat Analytics{% endblock %}
+{% block content %}
+<div class="card p-4" style="width:380px;">
+  <h4 class="mb-4 text-center fw-bold" style="color:var(--accent);">
+    &#9888; CyberThreat Analytics
+  </h4>
+  <p class="text-center text-muted mb-4" style="font-size:.85rem;">Система предиктивной аналитики киберугроз</p>
+
+  {% if error %}
+  <div class="alert-bar mb-3" style="background:rgba(248,81,73,.12);border:1px solid var(--danger)44;">
+    <div class="alert-dot" style="background:var(--danger)"></div>
+    <span>{{ error }}</span>
+  </div>
+  {% endif %}
+
+  <form method="POST">
+    <div class="mb-3">
+      <label class="form-label">Имя пользователя</label>
+      <input type="text" name="username" class="form-control" placeholder="admin" required autofocus/>
+    </div>
+    <div class="mb-4">
+      <label class="form-label">Пароль</label>
+      <input type="password" name="password" class="form-control" required/>
+    </div>
+    <button type="submit" class="btn btn-primary w-100">Войти</button>
+  </form>
+  <div class="text-center mt-3" style="font-size:.82rem; color:var(--muted);">
+    Нет аккаунта? <a href="/register">Зарегистрироваться</a>
+  </div>
+  <div class="mt-4 p-2 rounded" style="background:#21262d; font-size:.72rem; color:var(--muted);">
+    <strong>Демо-доступ:</strong><br>
+    admin / admin123 &nbsp;|&nbsp; analyst / analyst123 &nbsp;|&nbsp; viewer / viewer123
+  </div>
+</div>
+{% endblock %}

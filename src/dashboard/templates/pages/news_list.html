@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Новости ИБ{% endblock %}
+{% block page_title %}Новости кибербезопасности{% endblock %}
+{% block content %}
+<div class="row g-2 mb-3">
+  {% for src in ['The Hacker News','BleepingComputer','Krebs on Security','CISA','Kaspersky Securelist'] %}
+  <div class="col-auto">
+    <a href="?source={{ src }}" class="btn btn-sm {% if source == src %}btn-primary{% else %}btn-outline-secondary{% endif %}">{{ src }}</a>
+  </div>
+  {% endfor %}
+  {% if source %}<div class="col-auto"><a href="/news" class="btn btn-sm btn-outline-secondary">✕ Все</a></div>{% endif %}
+</div>
+
+<div class="row g-3">
+  {% for n in items %}
+  <div class="col-12 col-md-6 col-xl-4">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="small text-muted mb-2">{{ n.source }} · {{ (n.published or '')[:16] }}</div>
+        <a href="{{ n.link }}" target="_blank" class="fw-semibold d-block mb-2" style="font-size:.9rem;line-height:1.4;">{{ n.title }}</a>
+        <p class="small text-muted mb-0" style="line-height:1.5;">{{ n.summary[:200] if n.summary else '' }}</p>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-12 text-center text-muted py-5">Нет новостей. Запустите <code>python main.py collect</code></div>
+  {% endfor %}
+</div>
+{% endblock %}

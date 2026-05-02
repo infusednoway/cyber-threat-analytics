@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}{{ cve.id }}{% endblock %}
+{% block page_title %}{{ cve.id }}{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-12 col-lg-8">
+    <div class="card mb-3">
+      <div class="card-header">Информация об уязвимости</div>
+      <div class="card-body">
+        <h5 class="fw-bold mb-1">{{ cve.id }}</h5>
+        <p class="text-muted small mb-3">Опубликовано: {{ cve.published[:10] if cve.published else '—' }}</p>
+        <p style="font-size:.88rem; line-height:1.6;">{{ cve.description or 'Описание отсутствует' }}</p>
+        <hr style="border-color:var(--border)"/>
+        <div class="row g-3 text-center">
+          <div class="col-4">
+            <div class="fw-bold" style="font-size:1.8rem;color:var(--accent);">{{ cve.cvss_score or '—' }}</div>
+            <div class="small text-muted">CVSS Score</div>
+          </div>
+          <div class="col-4">
+            <span class="badge badge-{{ cve.severity }}" style="font-size:.85rem;padding:.4em .8em;">{{ cve.severity }}</span>
+            <div class="small text-muted mt-1">Severity</div>
+          </div>
+          <div class="col-4">
+            <div class="fw-bold" style="font-size:1rem;">{{ cve.cwe or '—' }}</div>
+            <div class="small text-muted">CWE</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header">Теги</div>
+      <div class="card-body">
+        {% for tag in tags %}
+        <span class="badge me-1" style="background:{{ tag.color }};color:#000;">{{ tag.name }}</span>
+        {% else %}
+        <span class="text-muted small">Нет тегов</span>
+        {% endfor %}
+        {% if user.role_id in (1, 2) %}
+        <form class="d-inline-flex gap-2 ms-3" method="POST" action="/cves/{{ cve.id }}/tag">
+          <select name="tag_id" class="form-select form-select-sm" style="width:auto;">
+            {% for t in all_tags %}
+            <option value="{{ t.id }}">{{ t.name }}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-sm btn-outline-secondary">+ Тег</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-4">
+    <div class="card mb-3">
+      <div class="card-header">Действия</div>
+      <div class="card-body d-flex flex-column gap-2">
+        <a href="https://nvd.nist.gov/vuln/detail/{{ cve.id }}" target="_blank"
+           class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-box-arrow-up-right"></i> Открыть в NVD
+        </a>
+        <form method="POST" action="/cves/{{ cve.id }}/watchlist">
+          <button type="submit" class="btn btn-sm w-100 {% if in_watchlist %}btn-warning{% else %}btn-outline-secondary{% endif %}">
+            <i class="bi bi-bookmark{% if in_watchlist %}-fill{% endif %}"></i>
+            {% if in_watchlist %}Убрать из Watchlist{% else %}Добавить в Watchlist{% endif %}
+          </button>
+        </form>
+        <a href="/cves" class="btn btn-outline-secondary btn-sm">← Назад к списку</a>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">Ссылки</div>
+      <div class="card-body small">
+        <a href="https://cve.mitre.org/cgi-bin/cvename.cgi?name={{ cve.id }}" target="_blank" class="d-block mb-1">MITRE CVE</a>
+        <a href="https://nvd.nist.gov/vuln/detail/{{ cve.id }}" target="_blank" class="d-block mb-1">NVD Detail</a>
+        {% if cve.cwe %}
+        <a href="https://cwe.mitre.org/data/definitions/{{ cve.cwe|replace('CWE-','') }}.html" target="_blank" class="d-block">{{ cve.cwe }} (MITRE)</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Watchlist{% endblock %}
+{% block page_title %}Мой Watchlist{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header">Отслеживаемые уязвимости — {{ items|length }}</div>
+  <div class="card-body p-0">
+    <table class="table table-dark table-hover mb-0">
+      <thead><tr><th>CVE ID</th><th>Добавлено</th><th>CVSS</th><th>Уровень</th><th>Заметки</th><th></th></tr></thead>
+      <tbody>
+      {% for w in items %}
+        <tr>
+          <td><a href="/cves/{{ w.cve_id }}">{{ w.cve_id }}</a></td>
+          <td class="text-nowrap text-muted small">{{ w.added_at[:10] }}</td>
+          <td>{{ w.cvss_score or '—' }}</td>
+          <td><span class="badge badge-{{ w.severity or 'UNKNOWN' }}" style="font-size:.7rem;">{{ w.severity or 'UNKNOWN' }}</span></td>
+          <td class="text-muted small">{{ w.notes or '—' }}</td>
+          <td>
+            <form method="POST" action="/cves/{{ w.cve_id }}/watchlist" class="d-inline">
+              <button class="btn btn-sm btn-outline-danger py-0">✕</button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="text-center text-muted py-5">
+          Watchlist пуст. Добавляйте CVE через страницу <a href="/cves">уязвимостей</a>.
+        </td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

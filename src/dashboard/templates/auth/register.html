@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Регистрация — CyberThreat Analytics{% endblock %}
+{% block content %}
+<div class="card p-4" style="width:400px;">
+  <h5 class="mb-4 fw-bold text-center">Создать аккаунт</h5>
+
+  {% if error %}
+  <div class="alert-bar mb-3" style="background:rgba(248,81,73,.12);border:1px solid #f8514944;">
+    <div class="alert-dot" style="background:var(--danger)"></div>
+    <span>{{ error }}</span>
+  </div>
+  {% endif %}
+
+  <form method="POST">
+    <div class="mb-3">
+      <label class="form-label">Имя пользователя</label>
+      <input type="text" name="username" class="form-control" required minlength="3"/>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Email</label>
+      <input type="email" name="email" class="form-control" required/>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Пароль</label>
+      <input type="password" name="password" class="form-control" required minlength="6"/>
+    </div>
+    <div class="mb-4">
+      <label class="form-label">Подтверждение пароля</label>
+      <input type="password" name="confirm" class="form-control" required/>
+    </div>
+    <button type="submit" class="btn btn-primary w-100">Зарегистрироваться</button>
+  </form>
+  <div class="text-center mt-3" style="font-size:.82rem; color:var(--muted);">
+    Уже есть аккаунт? <a href="/login">Войти</a>
+  </div>
+</div>
+{% endblock %}

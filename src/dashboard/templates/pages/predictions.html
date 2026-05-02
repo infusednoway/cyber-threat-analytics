@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Прогноз угроз{% endblock %}
+{% block page_title %}Предиктивная аналитика{% endblock %}
+{% block head %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>{% endblock %}
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">Прогноз активности угроз на 30 дней (полиномиальная регрессия)</div>
+      <div class="card-body" style="height:320px;position:relative;">
+        <canvas id="predChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">Прогнозируемые значения по дням</div>
+  <div class="card-body p-0" style="max-height:50vh;overflow-y:auto;">
+    <table class="table table-dark table-hover mb-0">
+      <thead><tr><th>#</th><th>Дата</th><th>Прогноз CVE</th><th>Визуализация</th></tr></thead>
+      <tbody>
+      {% for p in predictions %}
+        <tr>
+          <td class="text-muted">{{ loop.index }}</td>
+          <td>{{ p.date }}</td>
+          <td class="fw-semibold">{{ p.predicted_count }}</td>
+          <td style="min-width:150px;">
+            <div style="height:8px;border-radius:4px;background:#58a6ff;width:{{ [p.predicted_count * 2, 200]|min }}px;"></div>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+async function load() {
+  const d = await fetch('/api/timeline').then(r=>r.json());
+  const allDates  = [...d.dates, ...d.pred_dates];
+  const allCounts = [...d.counts, ...Array(d.pred_dates.length).fill(null)];
+  const allPreds  = [...Array(d.dates.length).fill(null), ...d.pred_counts];
+  new Chart(document.getElementById('predChart'), {
+    type:'line',
+    data:{ labels:allDates, datasets:[
+      { label:'Фактические CVE', data:allCounts, borderColor:'#58a6ff',
+        backgroundColor:'rgba(88,166,255,.1)', borderWidth:1.5, pointRadius:2, fill:true },
+      { label:'Прогноз (30 дней)', data:allPreds, borderColor:'#f85149',
+        backgroundColor:'rgba(248,81,73,.1)', borderWidth:2, borderDash:[6,3], pointRadius:3, fill:true },
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      scales:{ x:{ ticks:{ color:'#8b949e', maxTicksLimit:15, maxRotation:0 }, grid:{ color:'#21262d' } },
+               y:{ ticks:{ color:'#8b949e' }, grid:{ color:'#21262d' }, beginAtZero:true } },
+      plugins:{ legend:{ labels:{ color:'#c9d1d9', boxWidth:12 } } } }
+  });
+}
+load();
+</script>
+{% endblock %}

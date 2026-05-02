@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Настройки системы{% endblock %}
+{% block page_title %}Настройки системы{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-12 col-lg-6">
+    <div class="card mb-3">
+      <div class="card-header">Параметры сбора данных</div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label">Глубина сбора CVE (дней)</label>
+          <input type="number" class="form-control" value="90" min="7" max="365"/>
+          <div class="form-text text-muted">Количество дней назад для загрузки CVE из NVD</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Максимум CVE за запрос</label>
+          <input type="number" class="form-control" value="2000" min="100" max="20000" step="100"/>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Новостей с каждой ленты</label>
+          <input type="number" class="form-control" value="20" min="5" max="50"/>
+        </div>
+        <button class="btn btn-primary">Сохранить</button>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-6">
+    <div class="card mb-3">
+      <div class="card-header">Пороги алертов</div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label">Критических CVE за 24ч (порог CRITICAL)</label>
+          <input type="number" class="form-control" value="5" min="1"/>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Недельный рост CVE, % (порог HIGH)</label>
+          <input type="number" class="form-control" value="25" min="1"/>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Новых эксплойтов за 24ч (порог HIGH)</label>
+          <input type="number" class="form-control" value="3" min="1"/>
+        </div>
+        <button class="btn btn-primary">Сохранить</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">Управление данными</div>
+      <div class="card-body d-flex flex-column gap-2">
+        <a href="/api/export/cves"     class="btn btn-outline-secondary btn-sm"><i class="bi bi-download"></i> Экспорт CVE в CSV</a>
+        <a href="/api/export/exploits" class="btn btn-outline-secondary btn-sm"><i class="bi bi-download"></i> Экспорт эксплойтов в CSV</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

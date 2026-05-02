@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Профиль{% endblock %}
+{% block page_title %}Профиль пользователя{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-12 col-lg-4">
+    <div class="card">
+      <div class="card-body text-center py-4">
+        <div style="font-size:3rem;color:var(--accent);">&#128100;</div>
+        <h5 class="fw-bold mt-2 mb-0">{{ userdata.username }}</h5>
+        <div class="text-muted small mb-2">{{ userdata.email }}</div>
+        <span class="badge" style="background:#21262d;font-size:.78rem;">
+          {{ userdata.role_name }}
+        </span>
+        <hr style="border-color:var(--border)"/>
+        <div class="text-muted small text-start">
+          <div class="mb-1"><strong>Зарегистрирован:</strong> {{ userdata.created_at[:10] if userdata.created_at else '—' }}</div>
+          <div><strong>Последний вход:</strong> {{ userdata.last_login[:16] if userdata.last_login else 'Только что' }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-8">
+    <div class="card">
+      <div class="card-header">Мой Watchlist ({{ watchlist|length }})</div>
+      <div class="card-body p-0" style="max-height:50vh;overflow-y:auto;">
+        <table class="table table-dark table-hover mb-0">
+          <thead><tr><th>CVE ID</th><th>Уровень</th><th>CVSS</th><th>Добавлено</th></tr></thead>
+          <tbody>
+          {% for w in watchlist %}
+            <tr>
+              <td><a href="/cves/{{ w.cve_id }}">{{ w.cve_id }}</a></td>
+              <td><span class="badge badge-{{ w.severity or 'UNKNOWN' }}" style="font-size:.7rem;">{{ w.severity or '—' }}</span></td>
+              <td>{{ w.cvss_score or '—' }}</td>
+              <td class="text-muted small">{{ w.added_at[:10] }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4" class="text-center text-muted py-3">Watchlist пуст</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
