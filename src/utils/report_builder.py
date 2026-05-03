@@ -10,8 +10,6 @@ from src.utils.statistics import (
 )
 
 
-# ─────────────────────────── helpers ────────────────────────────────────────
-
 def _date_range_filter(rows: list[dict], date_from: str, date_to: str,
                        field: str = "published") -> list[dict]:
     if not date_from and not date_to:
@@ -55,10 +53,7 @@ def _cve_daily_counts(rows: list[dict]) -> list[dict]:
     return [{"date": d, "count": c} for d, c in sorted(counts.items())]
 
 
-# ─────────────────────────── section builders ────────────────────────────────
-
 def build_executive_summary(date_from: str = "", date_to: str = "") -> dict:
-    """High-level totals for an executive one-pager."""
     summary = get_summary_stats()
     growth  = get_weekly_growth()
     sev     = get_severity_distribution()
@@ -172,8 +167,6 @@ def build_nlp_section() -> dict:
     }
 
 
-# ─────────────────────────── full report ─────────────────────────────────────
-
 def build_full_report(date_from: str = "", date_to: str = "",
                       include_nlp: bool = True,
                       include_anomalies: bool = True) -> dict:
@@ -197,7 +190,6 @@ def build_full_report(date_from: str = "", date_to: str = "",
 
 
 def build_weekly_digest() -> dict:
-    """Pre-canned 7-day digest."""
     week_ago  = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%d")
     today_str = datetime.utcnow().strftime("%Y-%m-%d")
     return build_full_report(date_from=week_ago, date_to=today_str,
@@ -211,10 +203,7 @@ def build_monthly_digest() -> dict:
                              include_nlp=True, include_anomalies=True)
 
 
-# ─────────────────────────── comparison helpers ──────────────────────────────
-
 def compare_periods(days_a: int = 7, days_b: int = 14) -> dict:
-    """Compare CVE counts/severities for two rolling windows."""
     now    = datetime.utcnow()
     rows   = get_cves(limit=2000)
 
@@ -245,7 +234,6 @@ def compare_periods(days_a: int = 7, days_b: int = 14) -> dict:
 
 
 def get_severity_heatmap(weeks: int = 8) -> list[dict]:
-    """Weekly breakdown for the last N weeks — used by heatmap chart."""
     rows  = get_cves(limit=2000)
     now   = datetime.utcnow()
     result = []
@@ -265,7 +253,6 @@ def get_severity_heatmap(weeks: int = 8) -> list[dict]:
 
 
 def get_cvss_percentiles(bins: int = 10) -> list[dict]:
-    """Distribution of CVSS scores across evenly-spaced bins."""
     rows   = get_cves(limit=2000)
     scores = [float(r["cvss_score"]) for r in rows if r.get("cvss_score")]
     if not scores:
@@ -294,7 +281,6 @@ def get_report_cover_data(title: str, author: str = "Analyst") -> dict:
 
 
 def summarize_for_alert(cve_id: str) -> Optional[str]:
-    """One-paragraph summary for alert notifications."""
     from src.models.nlp_analyzer import analyze_cve_text
     data = analyze_cve_text(cve_id)
     if not data:

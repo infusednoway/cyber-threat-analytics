@@ -133,7 +133,7 @@ def init_db():
     conn.close()
 
 
-# ── CVE ──────────────────────────────────────────────────────────────────────
+
 
 def insert_cve(record: dict):
     conn = get_connection()
@@ -202,7 +202,7 @@ def get_recent_critical_count(hours: int = 24) -> int:
     return count
 
 
-# ── NEWS ─────────────────────────────────────────────────────────────────────
+
 
 def insert_news(record: dict):
     conn = get_connection()
@@ -231,7 +231,7 @@ def get_news(limit: int = 20, source: str = None):
     return [dict(r) for r in rows]
 
 
-# ── EXPLOITS ─────────────────────────────────────────────────────────────────
+
 
 def insert_exploit(record: dict):
     conn = get_connection()
@@ -269,7 +269,7 @@ def get_exploit_by_id(exploit_id: int):
     return dict(row) if row else None
 
 
-# ── USERS & AUTH ─────────────────────────────────────────────────────────────
+
 
 def create_user(username: str, email: str, password_hash: str, role_id: int = 3):
     conn = get_connection()
@@ -365,7 +365,7 @@ def delete_session(token: str):
     conn.close()
 
 
-# ── ALERT LOG ────────────────────────────────────────────────────────────────
+
 
 def log_alert(level: str, message: str):
     conn = get_connection()
@@ -391,7 +391,7 @@ def mark_alerts_read():
     conn.close()
 
 
-# ── REPORTS ──────────────────────────────────────────────────────────────────
+
 
 def create_report(data: dict) -> int:
     conn = get_connection()
@@ -430,7 +430,7 @@ def get_report_by_id(report_id: int):
     return dict(row) if row else None
 
 
-# ── WATCHLIST ────────────────────────────────────────────────────────────────
+
 
 def add_to_watchlist(user_id: int, cve_id: str, notes: str = ""):
     conn = get_connection()
@@ -466,7 +466,7 @@ def get_watchlist(user_id: int):
     return [dict(r) for r in rows]
 
 
-# ── TAGS ─────────────────────────────────────────────────────────────────────
+
 
 def get_tags():
     conn = get_connection()
@@ -496,7 +496,7 @@ def get_cve_tags(cve_id: str):
     return [dict(r) for r in rows]
 
 
-# ── MISC ─────────────────────────────────────────────────────────────────────
+
 
 def get_total_counts():
     conn = get_connection()

@@ -1,10 +1,3 @@
-"""
-Shodan-style vulnerable host lookup using Shodan's public API.
-
-Falls back to a mock dataset when the API key is absent,
-so the module stays importable and testable without credentials.
-"""
-
 from __future__ import annotations
 
 import os
@@ -23,8 +16,6 @@ SHODAN_BASE    = "https://api.shodan.io"
 _SESSION = requests.Session()
 _SESSION.headers.update({"User-Agent": "CyberThreatAnalytics/1.0"})
 
-
-# ──────────────────────────── API helpers ────────────────────────────────────
 
 def _api_get(path: str, params: dict = None, timeout: int = 20) -> Optional[dict]:
     if not SHODAN_API_KEY:
@@ -50,10 +41,7 @@ def _api_get(path: str, params: dict = None, timeout: int = 20) -> Optional[dict
         return None
 
 
-# ──────────────────────────── host lookup ────────────────────────────────────
-
 def get_host_info(ip: str) -> Optional[dict]:
-    """Return Shodan host data for a given IP."""
     data = _api_get(f"/shodan/host/{ip}")
     if not data:
         return _mock_host(ip)
@@ -101,10 +89,7 @@ def _mock_host(ip: str) -> dict:
     }
 
 
-# ──────────────────────────── CVE host search ────────────────────────────────
-
 def search_hosts_for_cve(cve_id: str, limit: int = 20) -> list[dict]:
-    """Find hosts with the given CVE listed in Shodan."""
     query = f"vuln:{cve_id}"
     data  = _api_get("/shodan/host/search",
                      params={"query": query, "facets": "country,port", "page": 1})
@@ -145,10 +130,7 @@ def _mock_cve_hosts(cve_id: str, n: int = 10) -> list[dict]:
     ]
 
 
-# ──────────────────────────── facet queries ──────────────────────────────────
-
 def get_vulnerability_facets(cve_id: str) -> dict:
-    """Return country/port facets for hosts exposing this CVE."""
     data = _api_get("/shodan/host/search",
                     params={"query": f"vuln:{cve_id}",
                             "facets": "country:10,port:10", "page": 1})
@@ -176,10 +158,7 @@ def _mock_facets(cve_id: str) -> dict:
     }
 
 
-# ──────────────────────────── product search ─────────────────────────────────
-
 def search_by_product(product: str, limit: int = 50) -> list[dict]:
-    """Return exposed hosts running a specific product."""
     data = _api_get("/shodan/host/search",
                     params={"query": f"product:{product}", "page": 1})
     if not data:
@@ -205,10 +184,7 @@ def count_exposed_hosts(query: str) -> int:
     return data.get("total", 0)
 
 
-# ──────────────────────────── batch enrichment ───────────────────────────────
-
 def enrich_cve_with_exposure(cve_id: str) -> dict:
-    """Return a combined exposure report for a CVE."""
     facets = get_vulnerability_facets(cve_id)
     hosts  = search_hosts_for_cve(cve_id, limit=10)
     top_countries = sorted(facets.get("countries", []),
@@ -241,10 +217,7 @@ def batch_enrich_cves(cve_ids: list[str]) -> list[dict]:
     return results
 
 
-# ──────────────────────────── internet scan stats ────────────────────────────
-
 def get_port_stats(ports: list[int] = None) -> list[dict]:
-    """How many hosts expose each common port (mock if no key)."""
     if ports is None:
         ports = [21, 22, 23, 25, 80, 443, 3306, 3389, 5432, 8080, 8443, 27017]
     if not SHODAN_API_KEY:
@@ -261,15 +234,12 @@ def get_port_stats(ports: list[int] = None) -> list[dict]:
 
 
 def get_vulnerability_trend(cve_ids: list[str]) -> list[dict]:
-    """Return exposure counts for a list of CVEs (for trend chart)."""
     trend = []
     for cve_id in cve_ids:
         facets = get_vulnerability_facets(cve_id)
         trend.append({"cve_id": cve_id, "exposed": facets.get("total", 0)})
     return sorted(trend, key=lambda x: x["exposed"], reverse=True)
 
-
-# ──────────────────────────── status & test ──────────────────────────────────
 
 def get_api_status() -> dict:
     if not SHODAN_API_KEY:

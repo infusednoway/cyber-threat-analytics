@@ -1,15 +1,3 @@
-"""
-Composite risk scoring for CVEs.
-
-Score = weighted sum of:
-  - CVSS severity band  (0-40 pts)
-  - Has known exploit   (0-25 pts)
-  - Threat type weight  (0-20 pts)
-  - Recency bonus       (0-10 pts)
-  - Keyword signals     (0-5  pts)
-Total maximum: 100 pts
-"""
-
 from __future__ import annotations
 
 import math
@@ -18,8 +6,6 @@ from typing import Optional
 
 from src.database.db import get_cves, get_exploits, get_connection
 
-
-# ──────────────────── weight tables ──────────────────────────────────────────
 
 _SEVERITY_SCORE = {
     "CRITICAL": 40,
@@ -54,12 +40,9 @@ _LOW_SIGNAL_WORDS = [
 ]
 
 
-# ──────────────────── sub-scorers ─────────────────────────────────────────────
-
 def _cvss_to_pts(cvss_score: Optional[float]) -> float:
     if cvss_score is None:
         return 0.0
-    # map 0-10 to 0-40 using a slight curve for values above 9
     return min(40.0, cvss_score * 4.0)
 
 
@@ -104,11 +87,8 @@ def _keyword_pts(description: str) -> float:
     return max(0.0, min(5.0, score))
 
 
-# ──────────────────── main scorer ─────────────────────────────────────────────
-
 def score_cve(row: dict, exploit_index: set[str],
               threat_types: Optional[list[str]] = None) -> dict:
-    """Return a full scoring breakdown for a single CVE row."""
     from src.models.nlp_analyzer import classify_threat_type
 
     cve_id      = row.get("id", "")
@@ -128,7 +108,6 @@ def score_cve(row: dict, exploit_index: set[str],
     pts_recency   = _recency_pts(published)
     pts_keywords  = _keyword_pts(description)
 
-    # blend severity and cvss: take higher, not sum
     pts_sev_final = max(pts_severity, pts_cvss * 0.9)
 
     total = pts_sev_final + pts_exploit + pts_threat + pts_recency + pts_keywords
@@ -158,8 +137,6 @@ def score_cve(row: dict, exploit_index: set[str],
         "published":    published,
     }
 
-
-# ──────────────────── batch API ───────────────────────────────────────────────
 
 def _build_exploit_index(limit: int = 2000) -> set[str]:
     exploits = get_exploits(limit=limit)
@@ -203,10 +180,7 @@ def get_risk_score_for_cve(cve_id: str) -> Optional[dict]:
     return score_cve(dict(row), exploit_index)
 
 
-# ──────────────────── trend risk ──────────────────────────────────────────────
-
 def get_risk_trend(days: int = 30) -> list[dict]:
-    """Daily average risk score for recent CVEs."""
     rows          = get_cves(limit=2000)
     exploit_index = _build_exploit_index()
     cutoff        = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%d")
@@ -226,7 +200,6 @@ def get_risk_trend(days: int = 30) -> list[dict]:
 
 
 def get_component_averages(limit: int = 500) -> dict[str, float]:
-    """Average contribution of each scoring component."""
     rows          = get_cves(limit=limit)
     exploit_index = _build_exploit_index()
     totals: dict[str, float] = {
@@ -245,7 +218,6 @@ def get_component_averages(limit: int = 500) -> dict[str, float]:
 
 
 def cluster_by_risk(limit: int = 500) -> dict[str, list[str]]:
-    """Group CVE IDs by risk label for quick lookup."""
     scored  = score_all_cves(limit=limit)
     buckets: dict[str, list[str]] = {"CRITICAL": [], "HIGH": [], "MEDIUM": [], "LOW": []}
     for r in scored:
@@ -254,14 +226,12 @@ def cluster_by_risk(limit: int = 500) -> dict[str, list[str]]:
 
 
 def get_high_risk_with_exploit(limit: int = 500) -> list[dict]:
-    """CVEs that are both high-scored AND have a known public exploit."""
     scored = score_all_cves(limit=limit)
     return [r for r in scored
             if r["components"]["exploit"] > 0 and r["risk_score"] >= 55]
 
 
 def explain_score(cve_id: str) -> Optional[str]:
-    """Human-readable explanation of why a CVE got its score."""
     data = get_risk_score_for_cve(cve_id)
     if not data:
         return None

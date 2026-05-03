@@ -197,7 +197,7 @@ def api_scheduler_status():
     return jsonify(get_scheduler().get_status())
 
 
-# ─────────────── NLP analysis ────────────────────────────────────────────────
+
 
 @api_bp.route("/nlp/threat_distribution")
 @login_required
@@ -242,7 +242,7 @@ def api_nlp_news_sentiment():
     return jsonify(analyze_news_sentiment(limit))
 
 
-# ─────────────── risk scoring ────────────────────────────────────────────────
+
 
 @api_bp.route("/risk/top")
 @login_required
@@ -297,7 +297,7 @@ def api_risk_explain(cve_id):
     return jsonify({"cve_id": cve_id, "explanation": text})
 
 
-# ─────────────── Shodan exposure ─────────────────────────────────────────────
+
 
 @api_bp.route("/shodan/status")
 @login_required
@@ -328,7 +328,7 @@ def api_shodan_port_stats():
     return jsonify(get_port_stats())
 
 
-# ─────────────── report builder ──────────────────────────────────────────────
+
 
 @api_bp.route("/report/executive")
 @login_required
@@ -380,7 +380,7 @@ def api_compare_periods():
     return jsonify(compare_periods(days_a, days_b))
 
 
-# ─────────────── notifications ───────────────────────────────────────────────
+
 
 @api_bp.route("/notifications/history")
 @login_required

@@ -1,12 +1,3 @@
-"""
-Notification dispatch module.
-
-Supports three channels:
-  1. In-app database alerts  (always available)
-  2. E-mail via SMTP          (requires env vars)
-  3. Webhook / Slack          (requires WEBHOOK_URL env var)
-"""
-
 from __future__ import annotations
 
 import os
@@ -25,7 +16,6 @@ from src.database.db import log_alert, get_connection
 
 logger = logging.getLogger(__name__)
 
-# ────────────── env config ───────────────────────────────────────────────────
 
 SMTP_HOST    = os.getenv("SMTP_HOST",    "")
 SMTP_PORT    = int(os.getenv("SMTP_PORT", "587"))
@@ -36,7 +26,6 @@ WEBHOOK_URL  = os.getenv("WEBHOOK_URL",  "")
 
 _THREAD_LOCK = threading.Lock()
 
-# ────────────── severity → colour map for Slack attachments ──────────────────
 
 _SLACK_COLOR = {
     "CRITICAL": "#f85149",
@@ -47,20 +36,12 @@ _SLACK_COLOR = {
 }
 
 
-# ════════════════════════ channel: in-app DB alert ════════════════════════════
-
 def notify_inapp(level: str, message: str, context: str = "") -> int:
-    """
-    Write a structured alert row to alert_log and return its rowid.
-    level: INFO | HIGH | CRITICAL
-    """
     full_msg = f"{message}. {context}".strip(" .")
     log_alert(level, full_msg)
     logger.info("[notify:inapp] %s — %s", level, message)
     return 1
 
-
-# ════════════════════════ channel: e-mail ════════════════════════════════════
 
 def _build_html_email(subject: str, level: str, body: str) -> str:
     color = {"CRITICAL": "#f85149", "HIGH": "#e3b341",
@@ -107,8 +88,6 @@ def send_email(to_addresses: list[str], subject: str,
         return False
 
 
-# ════════════════════════ channel: webhook / slack ════════════════════════════
-
 def _build_slack_payload(title: str, body: str, level: str) -> dict:
     color = _SLACK_COLOR.get(level.upper(), "#8b949e")
     return {
@@ -151,15 +130,9 @@ def send_raw_webhook(url: str, data: dict, timeout: int = 10) -> bool:
         return False
 
 
-# ════════════════════════ high-level dispatchers ══════════════════════════════
-
 def dispatch(level: str, title: str, body: str,
              email_to: Optional[list[str]] = None,
              webhook_url: str = "") -> dict[str, bool]:
-    """
-    Send a notification to all configured channels in parallel.
-    Returns channel → success mapping.
-    """
     results: dict[str, bool] = {}
 
     def _inapp():
@@ -228,8 +201,6 @@ def notify_weekly_digest(summary: dict,
     return dispatch("INFO", title, body, email_to=email_to)
 
 
-# ════════════════════════ subscriber management ═══════════════════════════════
-
 def get_notification_subscribers() -> list[dict]:
     conn = get_connection()
     rows = conn.execute(
@@ -257,8 +228,6 @@ def get_analyst_emails() -> list[str]:
     return [r["email"] for r in rows if r["email"]]
 
 
-# ════════════════════════ notification log ════════════════════════════════════
-
 def get_notification_history(limit: int = 50) -> list[dict]:
     conn = get_connection()
     rows = conn.execute(
@@ -285,10 +254,7 @@ def mark_all_read() -> None:
     conn.close()
 
 
-# ════════════════════════ channel health check ════════════════════════════════
-
 def check_channels() -> dict[str, dict]:
-    """Return status of each configured notification channel."""
     return {
         "inapp": {
             "enabled": True,
