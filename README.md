@@ -1,61 +1,95 @@
 # Прототип системы предиктивной аналитики киберугроз на основе открытых источников
 
-Дипломная работа. Система собирает данные об уязвимостях и угрозах из открытых источников, классифицирует их с помощью машинного обучения, строит прогноз активности угроз и отображает всё в веб-интерфейсе.
+Дипломная работа по направлению 10.03.01 «Информационная безопасность», Московский Политехнический Университет.
+
+Система собирает данные об уязвимостях из открытых источников, обрабатывает их с помощью нескольких ML-моделей и отображает результаты в веб-интерфейсе с разграничением прав доступа.
 
 ---
 
-## Возможности
+## Что умеет система
 
-- Сбор CVE из базы NVD (NIST) через официальный API
-- Сбор новостей кибербезопасности из RSS-лент (The Hacker News, BleepingComputer, CISA и др.)
-- Сбор публичных эксплойтов из Exploit-DB с автоматическим опреде��ением типа и платформы
-- Классификация угроз по уровню опасности (LOW / MEDIUM / HIGH / CRITICAL) — TF-IDF + Random Forest
-- Прогноз количества CVE на 14 дней вперёд — полиномиальная регрессия по временному ряду
-- Сравнение трёх ML-моделей с метриками по 5-fold кросс-валидации
-- Система алертов: автоматические предупреждения при аномальном росте угроз
-- Веб-дашборд: интерактивные графики, таблицы, баннеры угроз
+**Сбор данных**
+- CVE из NVD (NIST) через официальный API v2, до 2000 записей за 90 дней
+- Публичные эксплойты с Exploit-DB (тип, платформа, CVE-привязка)
+- Новости ИБ из RSS-лент: The Hacker News, BleepingComputer, CISA, Krebs on Security, Kaspersky Securelist
+- MITRE ATT&CK техники и тактики через STIX-формат
+- Интеграция с Shodan API для оценки экспозиции хостов (fallback на mock-данные без ключа)
+
+**Машинное обучение**
+- Классификация угроз по уровню опасности (TF-IDF + Random Forest)
+- Прогноз количества CVE на 14 дней вперёд (полиномиальная регрессия)
+- Детектирование аномалий в потоке CVE (z-score по скользящему окну)
+- NLP-анализ описаний CVE: извлечение типов угроз, продуктов, ключевых слов
+- Сравнение трёх моделей с 5-fold кросс-валидацией (LR, RF, SVM)
+
+**Аналитика**
+- Риск-скор CVE от 0 до 100 — взвешенная сумма пяти компонент: severity/CVSS, наличие эксплойта, тип угрозы, давность публикации, сигнальные слова в описании
+- Экспозиция продуктов: сводка по уязвимым продуктам с разбивкой по критичности
+- Статистика: распределение CVSS, топ CWE, статистика эксплойтов по платформам, источники новостей
+- Отчёты: исполнительная сводка, полный отчёт, еженедельный/ежемесячный дайджест, сравнение периодов
+
+**Алерты и уведомления**
+- Автоматические алерты при аномальном росте CVE или появлении критических уязвимостей
+- Три канала доставки уведомлений: in-app, e-mail (SMTP), webhook/Slack
+
+**Интерфейс**
+- Три роли: admin, analyst, viewer — с разными правами доступа
+- 20+ страниц: дашборд, CVE, эксплойты, новости, алерты, прогноз, риск, экспозиция, аномалии, MITRE ATT&CK, статистика, watchlist, отчёты, модели ML, профиль, настройки, управление пользователями
+- Watchlist — отслеживание конкретных CVE с пометками
 
 ---
 
-## Стек технологий
+## Стек
 
 | Компонент | Технология |
 |-----------|-----------|
 | Язык | Python 3.10+ |
 | База данных | SQLite |
-| Сбор данных | `requests`, `feedparser` |
-| Машинное обучение | `scikit-learn` |
-| Обработка данных | `pandas`, `numpy` |
-| Веб-сервер | Flask |
-| Визуализация | Chart.js, Bootstrap 5 |
+| Веб-фреймворк | Flask + Blueprint |
+| ML | scikit-learn (TF-IDF, RF, LR, SVM) |
+| Данные | pandas, numpy |
+| Визуализация | Chart.js 4, Bootstrap 5 |
+| Внешние API | NVD API v2, Shodan API, MITRE STIX |
 
 ---
 
-## Структура проекта
+## Структура
 
 ```
-├── main.py                            # Точка входа
-├── requirements.txt                   # Зависимости
+├── main.py
+├── requirements.txt
 ├── data/
-│   ├── threats.db                     # SQLite база данных
-│   ├── classifier.pkl                 # Обученная модель
-│   └── model_comparison.json          # Результаты сравнения моделей
+│   ├── threats.db
+│   ├── classifier.pkl
+│   └── model_comparison.json
 └── src/
     ├── collectors/
-    │   ├── nvd_collector.py           # Сбор CVE из NVD API
-    │   ├── rss_collector.py           # Сбор новостей из RSS
-    │   └── exploit_collector.py       # Сбор эксплойтов из Exploit-DB
+    │   ├── nvd_collector.py
+    │   ├── rss_collector.py
+    │   ├── exploit_collector.py
+    │   ├── mitre_collector.py
+    │   └── shodan_collector.py
     ├── database/
-    │   └── db.py                      # Работа с SQLite
+    │   └── db.py
     ├── models/
-    │   ├── classifier.py              # ML-классификатор угроз
-    │   ├── predictor.py               # Предиктивная аналитика
-    │   ├── alerter.py                 # Система алертов
-    │   └── model_comparison.py        # Сравнение моделей
+    │   ├── classifier.py
+    │   ├── predictor.py
+    │   ├── alerter.py
+    │   ├── anomaly_detector.py
+    │   ├── nlp_analyzer.py
+    │   ├── risk_scorer.py
+    │   └── model_comparison.py
+    ├── utils/
+    │   ├── statistics.py
+    │   ├── report_builder.py
+    │   └── notifier.py
     └── dashboard/
-        ├── app.py                     # Flask API
+        ├── app.py
+        ├── routes/
+        │   ├── auth_routes.py
+        │   ├── main_routes.py
+        │   └── api_routes.py
         └── templates/
-            └── index.html             # Веб-интерфейс
 ```
 
 ---
@@ -63,104 +97,90 @@
 ## Установка
 
 ```bash
-# 1. Клонировать репозиторий
-git clone https://github.com/<username>/<repo>.git
-cd <repo>
+git clone https://github.com/infusednoway/cyber-threat-analytics.git
+cd cyber-threat-analytics
 
-# 2. Создать виртуальное окружение (рекомендуется)
 python -m venv venv
-venv\Scripts\activate          # Windows
-# source venv/bin/activate     # Linux / macOS
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # Linux/macOS
 
-# 3. Установить зависимости
 pip install -r requirements.txt
 ```
 
+Опциональные переменные окружения:
+
+```
+SHODAN_API_KEY=...   # без ключа работает на mock-данных
+SMTP_HOST=...
+SMTP_USER=...
+SMTP_PASS=...
+WEBHOOK_URL=...      # Slack incoming webhook
+```
+
 ---
 
-## Команды
+## Запуск
 
-### Запустить всё сразу (сбор → обучение → сравнение → дашборд)
 ```bash
-python main.py
-# или явно:
+# Полный цикл: сбор → обучение → сравнение моделей → дашборд
 python main.py all
-```
 
-### Только сбор данных
-```bash
+# Только сбор данных
 python main.py collect
-```
-Загружает:
-- CVE из NVD за последние 90 дней (до 2000 записей)
-- Новости с 5 RSS-лент
-- Публичные эксплойты с Exploit-DB
 
-### Только обучение модели классификации
-```bash
+# Обучение классификатора
 python main.py train
-```
-Обучает Random Forest на данных из базы, сохраняет модель в `data/classifier.pkl`.
 
-### Только сравнение моделей
-```bash
+# Сравнение моделей (5-fold CV)
 python main.py compare
-```
-Запускает 5-fold кросс-валидацию для трёх моделей (Логистическая регрессия, Случайный лес, Метод опорных векторов) и выводит таблицу метрик.
 
-### Только дашборд (если данные уже собраны)
-```bash
+# Только дашборд (если данные уже есть)
 python main.py dashboard
 ```
-Открыть в браузере: **http://127.0.0.1:5000**
+
+Дашборд открывается на **http://127.0.0.1:5000**
+
+Дефолтный аккаунт администратора создаётся при первом запуске: `admin` / `admin123`
 
 ---
 
-## REST API дашборда
+## API
+
+Основные эндпоинты (полный список в `src/dashboard/routes/api_routes.py`):
 
 | Эндпоинт | Описание |
 |----------|----------|
-| `GET /` | Веб-интерфейс |
-| `GET /api/summary` | Общая статистика и распределение по уровням |
-| `GET /api/timeline` | Временной ряд CVE + прогноз на 14 дней |
-| `GET /api/alerts` | Активные алерты системы |
-| `GET /api/cves` | Последние 100 CVE |
-| `GET /api/exploits` | Последние 50 публичных эксплойтов |
-| `GET /api/news` | Последние 30 новостей ИБ |
-| `GET /api/features` | Топ-15 признаков классификатора |
-| `GET /api/model_comparison` | Результаты сравнения моделей |
+| `GET /api/summary` | Общая статистика |
+| `GET /api/timeline` | Временной ряд + прогноз на 14 дней |
+| `GET /api/alerts` | Текущие алерты |
+| `GET /api/cves` | CVE с фильтрацией |
+| `GET /api/exploits` | Эксплойты |
+| `GET /api/risk/top` | Топ CVE по риск-скору |
+| `GET /api/risk/distribution` | Распределение риск-уровней |
+| `GET /api/risk/explain/<cve_id>` | Объяснение скора конкретной CVE |
+| `GET /api/nlp/threat_distribution` | Типы угроз по NLP-анализу |
+| `GET /api/nlp/product_exposure` | Уязвимые продукты |
+| `GET /api/shodan/exposure/<cve_id>` | Экспозиция CVE по Shodan |
+| `GET /api/anomalies` | Обнаруженные аномалии |
+| `GET /api/report/executive` | Исполнительная сводка |
+| `GET /api/report/weekly` | Еженедельный дайджест |
 
 ---
 
 ## Источники данных
 
-| Источник | Тип данных | Ссылка |
-|----------|-----------|--------|
-| NVD (NIST) | CVE, CVSS, CWE | nvd.nist.gov |
-| Exploit-DB | Публичные эксплойты | exploit-db.com |
-| The Hacker News | Новости ИБ | thehackernews.com |
-| BleepingComputer | Новости ИБ | bleepingcomputer.com |
-| Krebs on Security | Новости ИБ | krebsonsecurity.com |
-| CISA | Оповещения | cisa.gov |
-| Kaspersky Securelist | Аналитика | securelist.com |
-
----
-
-## Система алертов
-
-Алерты формируются автоматически по трём триггерам:
-
-| Уровень | Условие |
-|---------|---------|
-| КРИТИЧЕСКИЙ | ≥ 5 критических CVE за последние 24 часа |
-| ВЫСОКИЙ | Прирост CVE за неделю ≥ 25% или ≥ 3 новых эксплойта за 24 часа |
-| СРЕДНИЙ | Любой положительный недельный прирост CVE |
-| ИНФОРМАЦИЯ | Угроз не обнаружено |
+| Источник | Данные |
+|----------|--------|
+| NVD / NIST | CVE, CVSS, CWE |
+| Exploit-DB | Публичные эксплойты |
+| MITRE ATT&CK | Тактики и техники (STIX) |
+| Shodan | Экспозиция хостов |
+| The Hacker News, BleepingComputer, CISA, Krebs on Security, Kaspersky Securelist | Новости ИБ |
 
 ---
 
 ## Требования
 
-- Python 3.10 или новее
-- Интернет-соединение для сбора данных
-- ~200 МБ свободного места (зависимости + данные)
+- Python 3.10+
+- ~300 МБ свободного места
+- Интернет для сбора данных
